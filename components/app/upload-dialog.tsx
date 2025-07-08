@@ -71,7 +71,6 @@ export function UploadDialog({ open, onOpenChange }: UploadDialogProps) {
     try {
       // Here you would typically upload the file and form data
       // Process file upload
-      // Removed console.log for cleaner code
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000))
 

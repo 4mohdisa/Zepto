@@ -100,7 +100,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <div className="p-4 border rounded bg-green-50 text-green-800">
               <p className="text-sm">
-                We've sent a link to reset your password. Please check your email and follow the instructions.
+                We&apos;ve sent a link to reset your password. Please check your email and follow the instructions.
               </p>
             </div>
           )}

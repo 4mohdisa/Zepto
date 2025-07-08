@@ -60,7 +60,6 @@ export function TransactionDialog({
 }: TransactionDialogProps) {
   const { user } = useAuth()
   const { categories, loading: categoriesLoading, error: categoriesError } = useCategories()
-  console.log('TransactionDialog - categories:', { categories, loading: categoriesLoading, error: categoriesError })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<TransactionFormValues>({
@@ -81,7 +80,6 @@ export function TransactionDialog({
   // Reset form when initialData changes or dialog opens
   useEffect(() => {
     if (isOpen && initialData) {
-      console.log('Resetting form with initialData:', initialData)
       // Reset the form with the new values
       form.reset({
         name: "",
@@ -116,14 +114,9 @@ export function TransactionDialog({
         throw new Error('Failed to load categories. Please refresh the page.')
       }
 
-      // Validate and log category selection
+      // Validate category selection
       const categoryId = Number(data.category_id)
       const selectedCategory = categories.find(cat => cat.id === categoryId)
-      console.log('Category validation:', {
-        categoryId,
-        selectedCategory,
-        allCategories: categories.map(c => ({ id: c.id, name: c.name }))
-      })
       
       if (!selectedCategory) {
         throw new Error(`Category ${categoryId} not found. Please select a valid category.`)
@@ -135,7 +128,6 @@ export function TransactionDialog({
       // Check if we're in edit mode - if so, we don't create a new transaction
       // Instead, we'll just pass the data to the parent component via onSubmit
       if (mode === 'edit') {
-        console.log('Edit mode - passing data to parent component', data)
         // We don't need to do anything here - just pass the data to the parent
         // component which will handle the update
         result = { success: true }

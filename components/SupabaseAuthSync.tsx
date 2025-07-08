@@ -18,15 +18,27 @@ export function SupabaseAuthSync() {
     const cookieValue = getCookie(cookieName);
     if (cookieValue) {
       try {
-        const { access_token, refresh_token } = JSON.parse(cookieValue);
-        if (access_token) {
+        const parsed = JSON.parse(cookieValue);
+        
+        // Validate the parsed object structure
+        if (
+          parsed && 
+          typeof parsed === 'object' && 
+          typeof parsed.access_token === 'string' &&
+          parsed.access_token.length > 0
+        ) {
+          const { access_token, refresh_token } = parsed;
           supabase.auth.setSession({
             access_token,
-            refresh_token: refresh_token || '',
+            refresh_token: typeof refresh_token === 'string' ? refresh_token : '',
           });
+        } else {
+          console.warn('Invalid auth cookie structure');
         }
       } catch (error) {
         console.error('Error parsing auth cookie:', error);
+        // Clear invalid cookie
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
       }
     }
   }, []);

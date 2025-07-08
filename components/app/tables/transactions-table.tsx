@@ -177,15 +177,35 @@ export function TransactionsTable({
       header: "Type",
       cell: ({ row }) => {
         const type = row.getValue("type") as string
-        return <Badge variant={type === 'Expense' ? 'destructive' : 'default'}>{type}</Badge>
+        return (
+          <Badge 
+            variant="secondary" 
+            className={cn(
+              "text-xs font-medium rounded-md px-2 py-1",
+              type === 'Expense' 
+                ? "bg-red-500/10 text-red-400 border-red-500/20" 
+                : "bg-green-500/10 text-green-400 border-green-500/20"
+            )}
+          >
+            {type}
+          </Badge>
+        )
       },
     },
     {
+      id: "category",
       accessorKey: "category_id",
       header: "Category",
       cell: ({ row }) => {
         const categoryId = row.getValue("category_id") as number
-        return <Badge>{getCategoryName(categoryId)}</Badge>
+        return (
+          <Badge 
+            variant="outline" 
+            className="text-xs font-medium rounded-md px-2 py-1 bg-muted/20 text-muted-foreground border-muted"
+          >
+            {getCategoryName(categoryId)}
+          </Badge>
+        )
       },
     },
     {
@@ -333,8 +353,6 @@ export function TransactionsTable({
   }
 
   const handleEditTransaction = (transaction: Transaction) => {
-    console.log('Edit transaction called with:', transaction)
-    
     // Set the editing transaction
     setEditingTransaction(transaction)
     
@@ -364,8 +382,6 @@ export function TransactionsTable({
         frequency: transaction.recurring_frequency as FrequencyType || 'Monthly',
       }
       
-      console.log('Prepared recurring form data:', recurringFormData)
-      
       setTransactionDialogData(recurringFormData)
       setIsRecurringTransactionDialogOpen(true)
     } else {
@@ -383,8 +399,6 @@ export function TransactionsTable({
         description: transaction.description || '',
         recurring_frequency: transaction.recurring_frequency as TransactionFormValues['recurring_frequency'] || 'Never',
       }
-      
-      console.log('Prepared form data:', formData)
       
       setTransactionDialogData(formData)
       setIsTransactionDialogOpen(true)
@@ -407,9 +421,6 @@ export function TransactionsTable({
         return transaction?.id
       })
       .filter((id): id is number => id !== undefined)
-    
-    console.log('Selected transaction IDs for category change:', selectedTransactionIds)
-    console.log('New category ID:', categoryId)
     
     if (selectedTransactionIds.length > 0) {
       // Call the onBulkEdit function with the transaction IDs and the new category ID
@@ -485,8 +496,6 @@ export function TransactionsTable({
                       })
                       .filter((id): id is number => id !== undefined)
                     
-                    console.log('Selected transaction IDs for deletion:', selectedTransactionIds)
-                    
                     if (selectedTransactionIds.length > 0) {
                       // Store the IDs and open the confirmation dialog
                       setTransactionsToDelete(selectedTransactionIds)
@@ -506,14 +515,14 @@ export function TransactionsTable({
         </div>
       )}
       
-      <div className="rounded-md border overflow-x-auto">
+      <div className="rounded-lg border border-border overflow-hidden bg-card">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="border-b border-border bg-muted/30">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead key={header.id} className="text-xs font-semibold text-muted-foreground py-3">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -541,9 +550,10 @@ export function TransactionsTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="border-b border-border/50 hover:bg-muted/30 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="py-4 text-sm">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -709,27 +719,6 @@ export function TransactionsTable({
         selectedCount={Object.keys(rowSelection).length}
       />
 
-      {/* Confirmation dialog for bulk deletion */}
-      <ConfirmationDialog
-        isOpen={isBulkDeleteDialogOpen}
-        onClose={() => {
-          setIsBulkDeleteDialogOpen(false)
-          setTransactionsToDelete([])
-        }}
-        onConfirm={() => {
-          if (transactionsToDelete.length > 0) {
-            // Call the onBulkDelete function with the transaction IDs
-            onBulkDelete?.(transactionsToDelete)
-            // Clear the selection
-            setRowSelection({})
-            // Close the dialog
-            setIsBulkDeleteDialogOpen(false)
-            setTransactionsToDelete([])
-          }
-        }}
-        title="Delete Selected Transactions"
-        description={`Are you sure you want to delete ${transactionsToDelete.length} selected transaction(s)? This action cannot be undone.`}
-      />
     </div>
   )
 }

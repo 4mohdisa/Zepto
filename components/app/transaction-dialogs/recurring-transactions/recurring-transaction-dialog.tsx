@@ -48,6 +48,7 @@ import { User } from '@supabase/supabase-js'
 
 interface RecurringTransactionDialogProps extends BaseDialogProps {
   onSubmit?: (data: RecurringTransactionFormValues) => void
+  onRefresh?: () => void
 }
 
 function useUser() {
@@ -82,6 +83,7 @@ export function RecurringTransactionDialog({
   isOpen,
   onClose,
   onSubmit,
+  onRefresh,
   initialData,
   mode,
 }: RecurringTransactionDialogProps) {
@@ -106,7 +108,6 @@ export function RecurringTransactionDialog({
   // Reset form with initialData when it changes or when dialog opens
   useEffect(() => {
     if (isOpen && initialData) {
-      console.log('Resetting form with initialData:', initialData)
       // Reset the form with the initial values plus any new initialData
       form.reset({
         name: "",
@@ -123,8 +124,6 @@ export function RecurringTransactionDialog({
   }, [form, initialData, isOpen])
 
   const handleSubmit = async (data: RecurringTransactionFormValues) => {
-    console.log('RecurringTransactionDialog handleSubmit received data:', data);
-    
     if (!user?.id) {
       toast.error("Authentication required", {
         description: "Please sign in to create recurring transactions.",
@@ -138,24 +137,28 @@ export function RecurringTransactionDialog({
       const formatDate = (date: Date | undefined): string | undefined =>
         date ? date.toISOString() : undefined
 
-      if (mode === 'create') {
-        // Prepare data for creation
-        const submissionData = {
-          ...data,
-          user_id: user.id,
-          category_id: data.category_id ? parseInt(data.category_id, 10) : 1,
-          start_date: formatDate(data.start_date) as string,
-          end_date: formatDate(data.end_date),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-
-        await transactionService.createRecurringTransaction(submissionData)
+      // Prepare data for submission
+      const submissionData = {
+        ...data,
+        user_id: user.id,
+        category_id: data.category_id ? parseInt(data.category_id, 10) : 1,
+        start_date: formatDate(data.start_date) as string,
+        end_date: formatDate(data.end_date),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       }
 
-      // Always invoke the parent callback if provided and wait for it to finish
-      if (onSubmit) {
-        await onSubmit(data)
+      if (mode === 'create') {
+        // For create mode, use the transaction service directly to avoid double creation
+        await transactionService.createRecurringTransaction(submissionData)
+      } else if (mode === 'edit' && initialData?.id) {
+        // For edit mode, update the recurring transaction directly
+        await transactionService.updateRecurringTransaction(initialData.id, submissionData, user.id)
+      } else {
+        // Fallback - call the parent callback if provided
+        if (onSubmit) {
+          await onSubmit(data)
+        }
       }
 
       toast.success(
@@ -165,11 +168,13 @@ export function RecurringTransactionDialog({
         }
       )
 
-      // Only close the dialog automatically in create mode; for edit mode
-      // the parent component controls the open state so we leave it to that.
-      if (mode === 'create') {
-        onClose()
+      // Refresh data if callback provided
+      if (onRefresh) {
+        onRefresh()
       }
+
+      // Close the dialog after successful operation
+      onClose()
     } catch (error) {
       console.error('Failed to submit recurring transaction:', error)
       toast.error('Failed to save recurring transaction', {

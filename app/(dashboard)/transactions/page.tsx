@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useCallback, Suspense } from 'react'
+import React, { useState, useCallback, useEffect, Suspense } from 'react'
 import { Button } from "@/components/ui/button"
 import { Plus, Menu } from 'lucide-react'
 import { TransactionsTable } from "@/components/app/tables/transactions-table"
@@ -10,6 +10,8 @@ import { DateRange } from "react-day-picker"
 import { startOfMonth, endOfMonth } from "date-fns"
 // Import the TransactionDialog directly since dynamic import is causing type issues
 import { TransactionDialog } from '@/components/app/transaction-dialogs/transactions/transaction-dialog'
+import { LoadingOverlay } from '@/components/ui/loading-overlay'
+import { ErrorDisplay } from '@/components/ui/error-display'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,22 +33,64 @@ export default function TransactionsPage() {
   })
   const { transactions: transactionsList, loading, error, refresh } = useTransactions(dateRange)
 
+  // Remove this useEffect as it causes infinite loops
+  // The useTransactions hook already handles fetching when dateRange changes
+
+  // Listen for header events
+  // Create stable event handler references with useCallback
+  const handleHeaderDateRangeChange = useCallback((event: CustomEvent) => {
+    const { dateRange: newRange } = event.detail;
+    // Prevent unnecessary re-renders by checking if the range actually changed
+    setDateRange(prevRange => {
+      // Only update if actually different to prevent infinite loops
+      if (!prevRange && !newRange) return prevRange;
+      if (!prevRange || !newRange) return newRange;
+      if (prevRange.from?.getTime() !== newRange.from?.getTime() || 
+          prevRange.to?.getTime() !== newRange.to?.getTime()) {
+        return newRange;
+      }
+      return prevRange;
+    });
+  }, []);
+
+  const handleHeaderAddTransaction = useCallback(() => {
+    setIsAddTransactionOpen(true);
+  }, []);
+
+  useEffect(() => {
+    // Add event listeners
+    window.addEventListener('header:daterangechange', handleHeaderDateRangeChange as EventListener);
+    window.addEventListener('header:addtransaction', handleHeaderAddTransaction);
+
+    // Clean up event listeners
+    return () => {
+      window.removeEventListener('header:daterangechange', handleHeaderDateRangeChange as EventListener);
+      window.removeEventListener('header:addtransaction', handleHeaderAddTransaction);
+    };
+    // Include stable function references in deps array
+  }, [handleHeaderDateRangeChange, handleHeaderAddTransaction]);
+
   const handleAddTransaction = useCallback(() => {
     setIsAddTransactionOpen(true)
   }, [])
 
+  // Add safe update pattern to prevent infinite loops
   const handleDateRangeChange = useCallback((newDateRange: DateRange | undefined) => {
-    if (!newDateRange) {
-      // If date range is cleared, show all transactions from the current month
-      setDateRange(undefined)
-      return
-    }
+    if (!newDateRange) return;
     
-    // Use the exact dates selected by the user
-    setDateRange({
-      from: newDateRange.from,
-      to: newDateRange.to || newDateRange.from
-    })
+    setDateRange(prevRange => {
+      // Only update if actually different to prevent loops
+      if (!prevRange) return newDateRange;
+      
+      if (prevRange.from?.getTime() !== newDateRange.from?.getTime() || 
+          prevRange.to?.getTime() !== newDateRange.to?.getTime()) {
+        return {
+          from: newDateRange.from,
+          to: newDateRange.to || newDateRange.from
+        };
+      }
+      return prevRange;
+    });
   }, [])
 
   const handleAddSuccess = useCallback(async () => {
@@ -114,7 +158,6 @@ export default function TransactionsPage() {
     }
 
     try {
-
       const supabaseData: Record<string, any> = {}
       
       // Process all fields in the form data
@@ -131,7 +174,6 @@ export default function TransactionsPage() {
           supabaseData[key] = formData[key as keyof typeof formData]
         }
       })
-
 
       const supabase = createClient()
       const { error } = await supabase
@@ -193,60 +235,37 @@ export default function TransactionsPage() {
   return (
     <div className="h-full flex flex-col">
       <div className="container h-full flex flex-col mx-auto px-4 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <h1 className="text-3xl font-bold">Transactions</h1>
-          <div className="flex flex-col md:flex-row items-end md:items-center gap-4">
-            <DateRangePickerWithRange dateRange={dateRange} onDateRangeChange={handleDateRangeChange} />
-            <div className="flex gap-4 ml-auto">
-              <div className="md:hidden w-full">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" className="w-full">
-                      <Menu className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={handleAddTransaction}>
-                      Add Transaction
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-              <div className="hidden md:flex gap-4">
-                <Button onClick={handleAddTransaction}>
-                  <Plus className="mr-2 h-4 w-4" /> Add Transaction
-                </Button>
-              </div>
-            </div>
+        {error ? (
+          <div className="flex-1 flex items-center justify-center">
+            <ErrorDisplay 
+              title="Failed to load transactions" 
+              description="We couldn't load your transactions. Please try refreshing the page." 
+              onRefresh={() => refresh()}
+              mode="inline"
+            />
           </div>
-        </div>
-
-        {error && (
-          <div className="mb-4 p-4 bg-destructive/15 text-destructive rounded-md">
-            Failed to load transactions. Please try again.
+        ) : (
+          <div className="flex-1 overflow-hidden">
+            <TransactionsTable
+              showFilters={true}
+              showPagination={true}
+              showRowsCount={true}
+              itemsPerPage={10}
+              sortBy={{
+                field: "date",
+                order: "desc"
+              }}
+              className="h-full"
+              dateRange={dateRange}
+              data={transactionsList}
+              loading={loading}
+              onDelete={handleDeleteTransaction}
+              onBulkDelete={handleBulkDelete}
+              onEdit={handleEditTransaction}
+              onBulkEdit={handleBulkEdit}
+            />
           </div>
         )}
-
-        <div className="flex-1 overflow-hidden">
-          <TransactionsTable
-            showFilters={true}
-            showPagination={true}
-            showRowsCount={true}
-            itemsPerPage={10}
-            sortBy={{
-              field: "date",
-              order: "desc"
-            }}
-            className="h-full"
-            dateRange={dateRange}
-            data={transactionsList}
-            loading={loading}
-            onDelete={handleDeleteTransaction}
-            onBulkDelete={handleBulkDelete}
-            onEdit={handleEditTransaction}
-            onBulkEdit={handleBulkEdit}
-          />
-        </div>
       </div>
 
       {isAddTransactionOpen && (

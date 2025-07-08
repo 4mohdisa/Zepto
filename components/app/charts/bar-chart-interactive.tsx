@@ -22,6 +22,7 @@ interface Transaction {
   date: string
   amount: number
   type: string
+  category_name?: string | null
   [key: string]: any
 }
 

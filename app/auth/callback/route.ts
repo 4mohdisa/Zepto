@@ -14,16 +14,12 @@ export async function GET(request: NextRequest) {
       const cookieStore = cookies()
       const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
       
-
-      
       // Exchange the code for a session
       const { data: { session }, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
       
       if (exchangeError) {
         throw exchangeError
       }
-      
-      // Session established successfully
       
       // Get the user from the newly created session
       const { data: { user }, error: userError } = await supabase.auth.getUser()

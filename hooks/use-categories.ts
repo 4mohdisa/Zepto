@@ -39,7 +39,6 @@ export function useCategories() {
           .order('name', { ascending: true });
         
         if (error) {
-          console.error('Error fetching categories:', error);
           throw error;
         }
         

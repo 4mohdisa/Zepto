@@ -16,28 +16,60 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import { transactions } from "@/data/transactions"
+import { format, parseISO, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns'
+
+interface Transaction {
+  date: string;
+  amount: number;
+  type: string;
+  category_name?: string | null;
+  [key: string]: any;
+}
 
 interface DailyBalance {
   date: string
   balance: number
 }
 
-// Process transactions data for the chart
-const processTransactions = (): DailyBalance[] => {
-  const dailyNetBalance: { [key: string]: number } = {}
-  
-  transactions.forEach(transaction => {
-    const date = transaction.date // Already in YYYY-MM-DD format
-    if (!dailyNetBalance[date]) {
-      dailyNetBalance[date] = 0
-    }
-    dailyNetBalance[date] += transaction.type === "Income" ? transaction.amount : -transaction.amount
-  })
+interface NetBalanceChartProps {
+  transactions?: Transaction[];
+}
 
-  return Object.entries(dailyNetBalance)
-    .map(([date, balance]) => ({ date, balance }))
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+// Process transactions data for the chart
+const processTransactions = (transactions: Transaction[]): DailyBalance[] => {
+  if (!transactions || transactions.length === 0) {
+    return [];
+  }
+
+  // Get date range from transactions
+  const dates = transactions.map(t => parseISO(t.date)).sort((a, b) => a.getTime() - b.getTime());
+  const startDate = dates[0];
+  const endDate = dates[dates.length - 1];
+  
+  // Generate all days in the range
+  const allDays = eachDayOfInterval({ start: startDate, end: endDate });
+  
+  let runningBalance = 0;
+  const dailyBalances: DailyBalance[] = [];
+  
+  allDays.forEach(day => {
+    const dayStr = format(day, 'yyyy-MM-dd');
+    const dayTransactions = transactions.filter(t => t.date === dayStr);
+    
+    // Calculate net change for this day
+    const dayNet = dayTransactions.reduce((net, transaction) => {
+      const amount = parseFloat(String(transaction.amount)) || 0;
+      return net + (transaction.type === 'Income' ? amount : -amount);
+    }, 0);
+    
+    runningBalance += dayNet;
+    dailyBalances.push({
+      date: dayStr,
+      balance: runningBalance
+    });
+  });
+
+  return dailyBalances;
 }
 
 const chartConfig = {
@@ -51,12 +83,12 @@ const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 }
 
-export function NetBalanceChart() {
+export function NetBalanceChart({ transactions = [] }: NetBalanceChartProps) {
   // Use useRef to track component mounted state
   const isMounted = React.useRef(true);
-  const [chartData, setChartData] = React.useState(() => processTransactions());
-  const minBalance = Math.min(...chartData.map(d => d.balance));
-  const maxBalance = Math.max(...chartData.map(d => d.balance));
+  const chartData = React.useMemo(() => processTransactions(transactions), [transactions]);
+  const minBalance = chartData.length > 0 ? Math.min(...chartData.map(d => d.balance)) : 0;
+  const maxBalance = chartData.length > 0 ? Math.max(...chartData.map(d => d.balance)) : 0;
   
   // Add cleanup effect to prevent memory leaks and disconnection errors
   React.useEffect(() => {
@@ -70,17 +102,17 @@ export function NetBalanceChart() {
   }, []);
 
   return (
-    <Card className="col-span-3 w-full">
-      <CardHeader className="flex flex-col items-stretch space-y-0 border-b p-6">
+    <Card className="w-full h-full">
+      <CardHeader className="flex flex-col items-stretch space-y-0 border-b p-4">
         <CardTitle>Net Balance Over Time</CardTitle>
         <CardDescription>
           Tracking daily net balance (income minus expenses)
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-6">
+      <CardContent className="p-4">
         <ChartContainer
           config={chartConfig}
-          className="aspect-[16/9] w-full"
+          className="aspect-auto h-[300px] w-full"
         >
           {/* Use width and height as percentages to make it truly responsive */}
           <ResponsiveContainer>

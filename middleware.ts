@@ -35,14 +35,14 @@ export async function middleware(req: NextRequest) {
   }
   
   // Add Content Security Policy headers
-  // Include 'unsafe-eval' to allow libraries like xlsx, mathjs, and llamaindex to function
+  const isDev = process.env.NODE_ENV === 'development';
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://gaphbnspyqosmklayzvj.supabase.co;
+    script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ''} https://gaphbnspyqosmklayzvj.supabase.co;
     style-src 'self' 'unsafe-inline';
     img-src 'self' data: blob: https://*.supabase.co;
     font-src 'self' data:;
-    connect-src 'self' https://*.supabase.co https://api.openai.com;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co;
     frame-src 'self';
     object-src 'none';
   `.replace(/\s+/g, ' ').trim();

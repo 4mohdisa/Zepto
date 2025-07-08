@@ -1,33 +1,18 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { format } from 'date-fns';
-import { Transaction } from '@/app/types/transaction';
-import { useAppSelector, useAppDispatch } from '@/redux/hooks';
-import { fetchUpcomingTransactions } from '@/redux/slices/recurringTransactionsSlice';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/utils/format';
 import { Badge } from '@/components/ui/badge';
 import { CreditCard, Loader2 } from 'lucide-react';
-import { useAuth } from '@/context/auth-context';
+import { useRecurringTransactions } from '@/hooks/use-recurring-transactions';
 
 interface UpcomingTransactionsTableProps {
   limit?: number;
 }
 
 export function UpcomingTransactionsTable({ limit = 5 }: UpcomingTransactionsTableProps): React.ReactElement {
-  const dispatch = useAppDispatch();
-  const { user } = useAuth();
-  
-  // Select data from Redux store with proper typing
-  const { upcomingTransactions, upcomingStatus } = useAppSelector((state) => state.recurringTransactions);
-  const isLoading = upcomingStatus === 'loading' || upcomingStatus === 'idle';
-
-  // Fetch transactions on component mount or when user changes
-  useEffect(() => {
-    if (user?.id) {
-      // Only fetch if we have a user ID
-      dispatch(fetchUpcomingTransactions(user.id));
-    }
-  }, [dispatch, user]);
+  // Use hook instead of Redux
+  const { upcomingTransactions, loading } = useRecurringTransactions();
 
   // Display only the first 'limit' transactions
   const displayedTransactions = upcomingTransactions.slice(0, limit);
@@ -45,7 +30,7 @@ export function UpcomingTransactionsTable({ limit = 5 }: UpcomingTransactionsTab
           </TableRow>
         </TableHeader>
         <TableBody>
-          {isLoading ? (
+          {loading ? (
             <TableRow>
               <TableCell colSpan={5} className="h-[400px]">
                 <div className="flex flex-col items-center justify-center h-full">
@@ -55,7 +40,7 @@ export function UpcomingTransactionsTable({ limit = 5 }: UpcomingTransactionsTab
               </TableCell>
             </TableRow>
           ) : displayedTransactions.length > 0 ? (
-            displayedTransactions.map((transaction: Transaction, index: number) => (
+            displayedTransactions.map((transaction: any, index: number) => (
               <TableRow key={index}>
                 <TableCell>
                   {format(new Date(transaction.date), 'MMM dd, yyyy')}

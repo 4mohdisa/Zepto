@@ -1,6 +1,7 @@
 import "./globals.css";
 import { AuthProvider } from '@/context/auth-context';
-import { ReduxProvider } from '@/redux/provider';
+import { CacheProvider } from '@/context/cache-context';
+import { ErrorBoundaryWrapper } from '@/components/ui/error-boundary';
 import localFont from "next/font/local";
 
 const geistSans = localFont({
@@ -19,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         {/* CSP is now handled in next.config.js */}
       </head>
@@ -27,11 +28,15 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <AuthProvider>
-          <ReduxProvider>
-            {children}
-          </ReduxProvider>
-        </AuthProvider>
+        <ErrorBoundaryWrapper>
+          <AuthProvider>
+            <CacheProvider>
+              <ErrorBoundaryWrapper>
+                {children}
+              </ErrorBoundaryWrapper>
+            </CacheProvider>
+          </AuthProvider>
+        </ErrorBoundaryWrapper>
       </body>
     </html>
   );

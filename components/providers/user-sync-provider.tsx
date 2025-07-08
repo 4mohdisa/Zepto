@@ -13,7 +13,6 @@ function useUser() {
     const getUser = async () => {
       const { data: { session }, error } = await supabase.auth.getSession()
       if (error) {
-        console.error('Error fetching user:', error)
         return
       }
       setUser(session?.user ?? null)

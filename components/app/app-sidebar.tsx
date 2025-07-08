@@ -7,9 +7,12 @@ import { usePathname, useRouter } from 'next/navigation';
 import { 
   Sidebar, 
   SidebarContent, 
+  SidebarFooter,
+  SidebarHeader,
   SidebarGroup, 
   SidebarMenu, 
   SidebarMenuItem, 
+  SidebarMenuButton,
 } from "@/components/ui/sidebar";
 import { Home, List, Repeat, ChevronsUpDown, LogOut, UserCog } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -43,7 +46,6 @@ export function AppSidebar() {
     const getUser = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
-        console.error('Error fetching user:', error);
         return;
       }
       setUser(session?.user ?? null);
@@ -83,82 +85,92 @@ export function AppSidebar() {
 
   return (
     <>
-      <Sidebar className="w-[15vw] bg-white border-r border-gray-200">
-        <SidebarContent className="flex flex-col h-full">
-        <div className="p-6 mb-8">
-          <Image 
-            src="/Ledgerly.svg" 
-            alt="Ledgerly Logo" 
-            width={150} 
-            height={40} 
-            className="mx-auto h-auto w-auto" 
-            priority
-          />
-        </div>
-        <SidebarGroup>
+      <Sidebar collapsible="offcanvas">
+        <SidebarHeader>
           <SidebarMenu>
-            {navItems.map((item) => {
-              const isActive = pathname === item.url;
-              return (
-                <SidebarMenuItem key={item.title}>
-                  <Link href={item.url} passHref>
-                    <div className={`
-                      flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ease-in-out
-                      ${isActive 
-                        ? 'bg-black text-white' 
-                        : 'text-gray-700 hover:bg-black hover:text-white'
-                      }
-                    `}>
-                      <item.icon className="w-5 h-5" />
-                      <span className="font-medium">{item.title}</span>
-                    </div>
-                  </Link>
-                </SidebarMenuItem>
-              );
-            })}
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
+                <Link href="/dashboard">
+                  <Image 
+                    src="/Ledgerly.svg" 
+                    alt="Ledgerly Logo" 
+                    width={24} 
+                    height={24} 
+                    className="h-6 w-6" 
+                    priority
+                  />
+                  <span className="text-lg font-semibold">Ledgerly</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
-        </SidebarGroup>
+        </SidebarHeader>
         
-        {/* User Profile Section */}
-        <div className="mt-auto p-4">
-          {user && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative w-full justify-start space-x-3 px-4 py-3 h-auto">
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name || 'User'} />
-                    <AvatarFallback className="rounded-lg">
-                      {user.user_metadata?.full_name
-                        ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('')
-                        : 'U'
-                      }
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">
-                      {user.user_metadata?.full_name || 'User'}
-                    </span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {user.email || 'No email'}
-                    </span>
-                  </div>
-                  <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" side="right" sideOffset={8}>
-                <DropdownMenuItem onClick={() => setIsAccountDialogOpen(true)}>
-                  <UserCog className="mr-2 h-4 w-4" />
-                  <span>Manage Account</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Sign Out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarMenu>
+              {navItems.map((item) => {
+                const isActive = pathname === item.url;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link href={item.url}>
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroup>
         </SidebarContent>
+        
+        <SidebarFooter>
+          {user && (
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuButton
+                      size="lg"
+                      className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                    >
+                      <Avatar className="h-8 w-8 rounded-lg">
+                        <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name || 'User'} />
+                        <AvatarFallback className="rounded-lg">
+                          {user.user_metadata?.full_name
+                            ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('')
+                            : 'U'
+                          }
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-semibold">
+                          {user.user_metadata?.full_name || 'User'}
+                        </span>
+                        <span className="truncate text-xs">
+                          {user.email || 'No email'}
+                        </span>
+                      </div>
+                      <ChevronsUpDown className="ml-auto size-4" />
+                    </SidebarMenuButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg" side="bottom" align="end" sideOffset={4}>
+                    <DropdownMenuItem onClick={() => setIsAccountDialogOpen(true)}>
+                      <UserCog />
+                      Account Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          )}
+        </SidebarFooter>
       </Sidebar>
       
       {/* Account Management Dialog */}

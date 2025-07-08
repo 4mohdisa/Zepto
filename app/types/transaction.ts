@@ -41,6 +41,21 @@ export interface RecurringTransaction {
   updated_at?: string | null;
 }
 
+export interface UpcomingTransaction {
+  id: string;
+  recurring_transaction_id: number;
+  user_id: string;
+  category_id: number;
+  category_name: string;
+  date: string;
+  amount: number;
+  name: string;
+  type: string;
+  account_type: string;
+  description?: string | null;
+  predicted: boolean;
+}
+
 export type UpdateTransaction = Partial<Omit<Transaction, 'id' | 'user_id'>>;
 export type UpdateRecurringTransaction = Partial<Omit<RecurringTransaction, 'id' | 'user_id'>>;
 

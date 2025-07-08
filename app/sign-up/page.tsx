@@ -40,7 +40,6 @@ export default function SignUpPage() {
     setIsLoading(true)
 
     try {
-
       // Sign up with Supabase
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
@@ -69,11 +68,6 @@ export default function SignUpPage() {
         return
       }
 
-      // Process user data after successful sign-up
-      
-      // Log the user data for debugging
-      // User created successfully
-
       // Create profile in the profiles table
       const { error: profileError } = await supabase
         .from('profiles')
@@ -89,8 +83,6 @@ export default function SignUpPage() {
       if (profileError) {
         console.error('Error creating profile:', profileError)
         // Continue with sign-up process even if profile creation fails
-      } else {
-
       }
 
       // If email confirmation is required

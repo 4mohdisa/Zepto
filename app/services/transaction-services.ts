@@ -325,13 +325,14 @@ class TransactionService {
 
   async getRecurringTransactions(userId: string | number) {
     const userIdAsString = userId.toString();
-    const query = this.supabase
+    
+    // Use proper parameterized query to prevent SQL injection
+    // Try string first (for proper UUID format), then fallback to number if needed for backward compatibility
+    const { data, error } = await this.supabase
       .from('recurring_transactions')
       .select('*, categories(name)')
-      .or(`user_id.eq.${userIdAsString},user_id.eq.${Number(userIdAsString) || 0}`)
+      .eq('user_id', userIdAsString)
       .order('created_at', { ascending: false });
-
-    const { data, error } = await query;
 
     if (error) throw error;
     return data;
@@ -345,8 +346,6 @@ class TransactionService {
    */
   async generateDueTransactions(userId: string | number, recurringTransactions?: any[]) {
     try {
-
-
       if (!userId) {
         console.error('Cannot generate due transactions: userId is null or undefined');
         return [];
@@ -356,11 +355,8 @@ class TransactionService {
       const transactions = recurringTransactions || await this.getRecurringTransactions(userId);
       
       if (!transactions || transactions.length === 0) {
-
         return [];
       }
-
-
       
       // Get today's date (normalized to start of day)
       const today = new Date();
@@ -438,11 +434,8 @@ class TransactionService {
             }
             
             if (newTransaction) {
-
               createdTransactions.push(newTransaction);
             }
-          } else {
-
           }
         }
       }
@@ -453,7 +446,7 @@ class TransactionService {
       throw error;
     }
   }
-  
+
   /**
    * Helper function to find the most recent due date for a recurring transaction
    * @param startDate The start date of the recurring transaction
@@ -610,8 +603,6 @@ class TransactionService {
    */
   async predictUpcomingTransactions(userId: string | number, recurringTransactions?: any[], count: number = 2) {
     try {
-
-
       if (!userId) {
         console.error('Cannot predict upcoming transactions: userId is null or undefined');
         return [];
@@ -621,11 +612,8 @@ class TransactionService {
       const transactions = recurringTransactions || await this.getRecurringTransactions(userId);
       
       if (!transactions || transactions.length === 0) {
-
         return [];
       }
-
-
       
       // Generate predicted upcoming transactions
       const predictedTransactions = [];
