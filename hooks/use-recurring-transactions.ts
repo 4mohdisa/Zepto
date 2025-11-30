@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { RecurringTransaction, UpcomingTransaction, Transaction } from '@/app/types/transaction'
+import { RecurringTransaction, Transaction } from '@/app/types/transaction'
 import { useAuth } from '@/context/auth-context'
 import { toast } from 'sonner'
 import { predictUpcomingTransactions } from '@/utils/predict-transactions'
@@ -93,9 +93,7 @@ export function useRecurringTransactions(): {
 
       if (error) throw error
 
-          // Refresh data
       await refresh()
-      
       toast.success('Recurring transaction created successfully')
     } catch (err) {
       console.error('Error creating recurring transaction:', err)
@@ -125,9 +123,7 @@ export function useRecurringTransactions(): {
 
       if (error) throw error
 
-          // Refresh data
       await refresh()
-      
       toast.success('Recurring transaction updated successfully')
     } catch (err) {
       console.error('Error updating recurring transaction:', err)
@@ -149,9 +145,7 @@ export function useRecurringTransactions(): {
 
       if (error) throw error
 
-          // Refresh data
       await refresh()
-      
       toast.success('Recurring transaction deleted successfully')
     } catch (err) {
       console.error('Error deleting recurring transaction:', err)
@@ -173,9 +167,7 @@ export function useRecurringTransactions(): {
 
       if (error) throw error
 
-          // Refresh data
       await refresh()
-      
       toast.success('Recurring transactions deleted successfully')
     } catch (err) {
       console.error('Error deleting recurring transactions:', err)
@@ -205,9 +197,7 @@ export function useRecurringTransactions(): {
 
       if (error) throw error
 
-          // Refresh data
       await refresh()
-      
       toast.success('Recurring transactions updated successfully')
     } catch (err) {
       console.error('Error updating recurring transactions:', err)

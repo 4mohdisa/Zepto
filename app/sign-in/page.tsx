@@ -119,14 +119,17 @@ function SignInForm() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-4">
-            <img src="/Ledgerly.svg" alt="Logo" className="h-24 w-auto" />
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <Card className="w-full max-w-md border-border shadow-2xl bg-white">
+        <CardHeader className="space-y-4">
+          <div className="flex justify-center items-center gap-2 mb-2">
+            <img src="/logo.png" alt="Zepto" className="h-14 w-14 object-contain" />
+            <h1 className="text-3xl font-bold text-foreground">
+              Zepto
+            </h1>
           </div>
-          <CardTitle className="text-2xl font-bold text-center">Sign in to your account</CardTitle>
-          <CardDescription className="text-center">Enter your email below to sign in to your account</CardDescription>
+          <CardTitle className="text-2xl font-semibold text-center text-foreground">Sign in to your account</CardTitle>
+          <CardDescription className="text-center text-muted-foreground">Enter your email below to sign in to your account</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -173,11 +176,11 @@ function SignInForm() {
                 )}
               />
               <div className="text-sm text-right">
-                <Link href="/forgot-password" className="text-primary hover:underline">
+                <Link href="/forgot-password" className="text-primary hover:text-secondary transition-colors">
                   Forgot password?
                 </Link>
               </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full gradient-primary hover:gradient-primary-hover transition-all shadow-lg" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -191,7 +194,15 @@ function SignInForm() {
           </Form>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
-          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={googleLoading}>
+          <div className="relative w-full">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+            </div>
+          </div>
+          <Button variant="outline" className="w-full border-border hover:bg-hover-surface transition-colors" onClick={handleGoogleSignIn} disabled={googleLoading}>
             {googleLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -218,9 +229,9 @@ function SignInForm() {
               </>
             )}
           </Button>
-          <div className="text-center text-sm">
+          <div className="text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
-            <Link href="/sign-up" className="font-medium text-primary hover:underline">
+            <Link href="/sign-up" className="font-medium text-primary hover:text-secondary transition-colors">
               Sign up
             </Link>
           </div>

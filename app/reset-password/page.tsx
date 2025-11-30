@@ -79,14 +79,17 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-4">
-            <img src="/Ledgerly.svg" alt="Logo" className="h-24 w-auto" />
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <Card className="w-full max-w-md border-border shadow-2xl bg-white">
+        <CardHeader className="space-y-4">
+          <div className="flex justify-center items-center gap-2 mb-2">
+            <img src="/logo.png" alt="Zepto" className="h-14 w-14 object-contain" />
+            <h1 className="text-3xl font-bold text-foreground">
+              Zepto
+            </h1>
           </div>
-          <CardTitle className="text-2xl font-bold text-center">Reset your password</CardTitle>
-          <CardDescription className="text-center">
+          <CardTitle className="text-2xl font-semibold text-center text-foreground">Reset your password</CardTitle>
+          <CardDescription className="text-center text-muted-foreground">
             Enter your new password below
           </CardDescription>
         </CardHeader>
@@ -151,7 +154,7 @@ export default function ResetPasswordPage() {
                 )}
               />
               
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full gradient-primary hover:gradient-primary-hover transition-all shadow-lg" disabled={isLoading}>
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -165,7 +168,7 @@ export default function ResetPasswordPage() {
           </Form>
         </CardContent>
         <CardFooter className="flex justify-center">
-          <Link href="/sign-in" className="text-sm text-primary hover:underline">
+          <Link href="/sign-in" className="text-sm text-primary hover:text-secondary transition-colors">
             Back to sign in
           </Link>
         </CardFooter>

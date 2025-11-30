@@ -14,50 +14,42 @@ export interface Category {
 }
 
 export function useCategories() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const supabase = createClient();
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
+    const supabase = createClient()
+    
     async function fetchCategories() {
       try {
-        setLoading(true);
+        setLoading(true)
         
-        // Get the current user session (for authentication purposes only)
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession()
         
         if (!session) {
-          throw new Error('No active session found');
+          throw new Error('No active session found')
         }
 
-        // Simply fetch all categories without any user_id filtering
-        // Categories are the same for all users
         const { data, error } = await supabase
           .from('categories')
           .select('*')
-          .order('name', { ascending: true });
+          .order('name', { ascending: true })
         
-        if (error) {
-          throw error;
-        }
+        if (error) throw error
         
-        if (error) throw error;
-        
-        setCategories(data || []);
+        setCategories(data || [])
       } catch (err) {
-        console.error('Error fetching categories:', err);
-        setError(err instanceof Error ? err : new Error('Failed to fetch categories'));
-        
-        // Set empty categories array on error to prevent UI issues
-        setCategories([]);
+        console.error('Error fetching categories:', err)
+        setError(err instanceof Error ? err : new Error('Failed to fetch categories'))
+        setCategories([])
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
     
-    fetchCategories();
-  }, []);
+    fetchCategories()
+  }, [])
 
-  return { categories, loading, error };
+  return { categories, loading, error }
 }

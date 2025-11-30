@@ -1,9 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', sans-serif;
+  font-optical-sizing: auto;
 }
 
 @layer utilities {
@@ -12,96 +15,65 @@ body {
   }
 }
 
-.cl-internal-13u79ez {
-  background: transparent !important;
-}
-
-.cl-internal-1dauvpw {
-  display: none !important;
-}
-
-.cl-internal-13lvar6 {
-  background: white !important;
-}
-
-.dev-banner {
-  display: none !important;
-}
-
-.cl-internal-1dauvpw {
-  display: none !important;
-}
-
+/* Zepto Color Theme - Light Theme */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 44%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --chart-1: 221.2 83.2% 53.3%;
-    --chart-2: 212 95% 68%;
-    --chart-3: 216 92% 60%;
-    --chart-4: 210 98% 78%;
-    --chart-5: 212 97% 87%;
+    /* Background Colors - Light Theme */
+    --background: 0 0% 100%;              /* #FFFFFF - White Background */
+    --card: 0 0% 100%;                    /* #FFFFFF - Card Background */
+    --popover: 0 0% 100%;                 /* #FFFFFF - Popover Background */
+    
+    /* Text Colors - Dark on Light */
+    --foreground: 220 13% 9%;             /* #111827 - Primary Text (gray-900) */
+    --muted-foreground: 220 9% 46%;       /* #6B7280 - Secondary Text (gray-500) */
+    --muted: 220 14% 96%;                 /* #F3F4F6 - Muted Background (gray-100) */
+    
+    /* Brand Colors - Keep Same */
+    --primary: 252 100% 65%;              /* #635BFF - Zepto Purple */
+    --primary-foreground: 0 0% 100%;      /* #FFFFFF */
+    --secondary: 252 100% 65%;            /* #635BFF - Consistent Purple */
+    --secondary-foreground: 0 0% 100%;    /* #FFFFFF */
+    
+    /* Semantic Colors - Keep Same */
+    --success: 142 71% 45%;               /* #10B981 - Success/Income (green-500) */
+    --warning: 38 92% 50%;                /* #F59E0B - Warning (amber-500) */
+    --destructive: 0 84% 60%;             /* #EF4444 - Error/Expenses (red-500) */
+    --destructive-foreground: 0 0% 100%;
+    
+    /* UI Elements - Light Theme */
+    --border: 220 13% 91%;                /* #E5E7EB - Border (gray-200) */
+    --input: 220 13% 91%;                 /* #E5E7EB - Input Border (gray-200) */
+    --ring: 252 100% 65%;                 /* #635BFF - Focus Ring */
+    --hover-surface: 220 14% 96%;         /* #F3F4F6 - Hover Surface (gray-100) */
+    
+    /* Surface Background for alternating sections */
+    --surface: 210 20% 98%;               /* #F9FAFB - gray-50 */
+    
+    /* Card Foreground */
+    --card-foreground: 220 13% 9%;        /* #111827 - gray-900 */
+    --popover-foreground: 220 13% 9%;     /* #111827 - gray-900 */
+    --accent: 220 14% 96%;                /* #F3F4F6 - gray-100 */
+    --accent-foreground: 220 13% 9%;      /* #111827 - gray-900 */
+    
+    /* Chart Colors (Professional Palette) - Keep Same */
+    --chart-1: 220 87% 62%;               /* #4C7EF3 - Blue */
+    --chart-2: 252 100% 65%;              /* #635BFF - Purple */
+    --chart-3: 190 71% 47%;               /* #22B8CF - Aqua */
+    --chart-4: 38 92% 50%;                /* #F59E0B - Amber */
+    --chart-5: 142 71% 45%;               /* #10B981 - Green */
+    --chart-6: 0 84% 60%;                 /* #EF4444 - Red */
+    
+    /* Sidebar - Light Theme */
+    --sidebar-background: 0 0% 100%;      /* #FFFFFF - White */
+    --sidebar-foreground: 220 13% 9%;     /* #111827 - gray-900 */
+    --sidebar-primary: 0 0% 100%;         /* #FFFFFF */
+    --sidebar-primary-foreground: 220 13% 9%; /* #111827 */
+    --sidebar-accent: 220 14% 96%;        /* #F3F4F6 - gray-100 */
+    --sidebar-accent-foreground: 220 13% 9%; /* #111827 */
+    --sidebar-border: 220 13% 91%;        /* #E5E7EB - gray-200 */
+    --sidebar-ring: 252 100% 65%;         /* #635BFF */
+    
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-  .dark {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 9.5%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 9.5%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 53.3%;
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 221.2 83.2% 53.3%;
-    --chart-1: 0 0% 53.3%;
-    --chart-2: 0 0% 53.3%;
-    --chart-3: 0 0% 53.3%;
-    --chart-4: 0 0% 53.3%;
-    --chart-5: 0 0% 53.3%;
-    --chart-6: 0 0% 53.3%;
-    --sidebar-background: 0 0% 9.5%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 0 0% 4%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 221.2 83.2% 53.3%;
   }
 }
 
@@ -111,5 +83,57 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Gradient utilities for buttons and accents */
+@layer utilities {
+  .gradient-primary {
+    background: linear-gradient(135deg, #635BFF 0%, #4C7EF3 100%);
+  }
+  
+  .gradient-primary-hover {
+    background: linear-gradient(135deg, #5851EA 0%, #3B6EE3 100%);
+  }
+}
+
+/* Landing page animations */
+@keyframes blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+
+@keyframes gradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+.animate-gradient {
+  animation: gradient 3s ease infinite;
+}
+
+.animate-scroll {
+  animation: scroll 40s linear infinite;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(calc(-384px * 5 - 1.5rem * 5));
   }
 }

@@ -2,16 +2,14 @@
 
 import { useState, useCallback } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/app/app-sidebar';
-import { AppHeader } from '@/components/app/app-header';
+import { AppSidebar } from '@/components/app/layout/sidebar';
+import { AppHeader } from '@/components/app/layout/header';
 import { LoadingOverlay } from '@/components/ui/loading-overlay';
-import { ErrorDisplay } from '@/components/ui/error-display';
 import { useRequireAuth } from '@/hooks/use-require-auth';
 import { usePathname } from 'next/navigation';
 import { DateRange } from 'react-day-picker';
 import { startOfMonth, endOfMonth } from 'date-fns';
 
-// Define header action props based on page
 interface HeaderActionState {
   isAddTransactionOpen?: boolean;
   isAddRecurringTransactionOpen?: boolean;
@@ -31,37 +29,25 @@ export default function DashboardLayout({
     dateRange: { from: startOfMonth(new Date()), to: endOfMonth(new Date()) },
   });
 
-  // Handler for date range picker
   const handleDateRangeChange = useCallback((range: DateRange | undefined) => {
     setHeaderState(prev => ({ ...prev, dateRange: range || null }));
-    // Custom event for page components to listen to
-    const event = new CustomEvent('header:daterangechange', { 
-      detail: { dateRange: range } 
-    });
-    window.dispatchEvent(event);
+    window.dispatchEvent(new CustomEvent('header:daterangechange', { detail: { dateRange: range } }));
   }, []);
 
-  // Handler for opening transaction dialog
   const handleAddTransaction = useCallback(() => {
     setHeaderState(prev => ({ ...prev, isAddTransactionOpen: true }));
-    // Custom event for page components to listen to
-    const event = new CustomEvent('header:addtransaction');
-    window.dispatchEvent(event);
+    window.dispatchEvent(new CustomEvent('header:addtransaction'));
   }, []);
 
-  // Handler for opening recurring transaction dialog
   const handleAddRecurringTransaction = useCallback(() => {
     setHeaderState(prev => ({ ...prev, isAddRecurringTransactionOpen: true }));
-    // Custom event for page components to listen to
-    const event = new CustomEvent('header:addrecurringtransaction');
-    window.dispatchEvent(event);
+    window.dispatchEvent(new CustomEvent('header:addrecurringtransaction'));
   }, []);
 
   if (isLoading) {
     return <LoadingOverlay />;
   }
 
-  // Determine which props to pass based on current path
   const getHeaderProps = () => {
     if (pathname === '/transactions') {
       return {
@@ -77,7 +63,6 @@ export default function DashboardLayout({
       };
     }
     
-    // Default - no special actions
     return {};
   };
 

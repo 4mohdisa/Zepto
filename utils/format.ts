@@ -3,6 +3,24 @@
  */
 
 /**
+ * Returns current ISO timestamp
+ */
+export function getCurrentTimestamp(): string {
+  return new Date().toISOString()
+}
+
+/**
+ * Returns timestamp fields for database records
+ * @param isNew - If true, includes both created_at and updated_at; otherwise only updated_at
+ */
+export function getTimestampFields(isNew: boolean = true): { created_at?: string; updated_at: string } {
+  const now = getCurrentTimestamp()
+  return isNew 
+    ? { created_at: now, updated_at: now }
+    : { updated_at: now }
+}
+
+/**
  * Format a number as currency (USD by default)
  * @param value The number to format
  * @param locale The locale to use for formatting (default: 'en-US')

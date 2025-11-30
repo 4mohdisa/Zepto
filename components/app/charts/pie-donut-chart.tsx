@@ -83,18 +83,18 @@ export function PieDonutChart({ transactions = [] }: PieDonutChartProps) {
   }, [chartData]);
 
   return (
-    <Card className="w-full h-full shadow-lg hover:shadow-xl transition-shadow duration-300 border-0 bg-card">
+    <Card className="w-full h-full shadow-lg hover:shadow-xl transition-all duration-300 border border-border bg-card hover:border-primary/30">
       <CardHeader className="flex flex-col items-stretch space-y-0 border-b border-border p-6">
-        <CardTitle className="text-lg font-semibold text-card-foreground">Category Distribution</CardTitle>
+        <CardTitle className="text-lg font-bold text-foreground">Category Distribution</CardTitle>
         <CardDescription className="text-muted-foreground">Spending breakdown by category</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 p-6">
         {chartData.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[250px] text-center">
-            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-3">
-              <PieChartIcon className="w-6 h-6 text-muted-foreground" />
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mb-3" style={{ background: 'linear-gradient(135deg, rgba(76, 126, 243, 0.1) 0%, rgba(109, 76, 255, 0.1) 100%)' }}>
+              <PieChartIcon className="w-7 h-7 text-primary" />
             </div>
-            <p className="text-muted-foreground">No expense data available</p>
+            <p className="text-muted-foreground font-medium">No expense data available</p>
           </div>
         ) : (
           <ChartContainer

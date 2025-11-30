@@ -16,7 +16,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import { format, parseISO, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns'
+import { format, parseISO, eachDayOfInterval } from 'date-fns'
+import { formatCurrency } from '@/utils/format'
 
 interface Transaction {
   date: string;
@@ -79,10 +80,6 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
-}
-
 export function NetBalanceChart({ transactions = [] }: NetBalanceChartProps) {
   // Use useRef to track component mounted state
   const isMounted = React.useRef(true);
@@ -102,14 +99,14 @@ export function NetBalanceChart({ transactions = [] }: NetBalanceChartProps) {
   }, []);
 
   return (
-    <Card className="w-full h-full">
-      <CardHeader className="flex flex-col items-stretch space-y-0 border-b p-4">
-        <CardTitle>Net Balance Over Time</CardTitle>
-        <CardDescription>
+    <Card className="w-full h-full shadow-lg hover:shadow-xl transition-all duration-300 border border-border hover:border-primary/30">
+      <CardHeader className="flex flex-col items-stretch space-y-0 border-b border-border p-6">
+        <CardTitle className="text-lg font-bold text-foreground">Net Balance Over Time</CardTitle>
+        <CardDescription className="text-muted-foreground">
           Tracking daily net balance (income minus expenses)
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-4">
+      <CardContent className="p-6">
         <ChartContainer
           config={chartConfig}
           className="aspect-auto h-[300px] w-full"

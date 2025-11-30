@@ -1,5 +1,4 @@
 import { createBrowserClient } from '@supabase/ssr';
-import { Database } from '../../database.types';
 
 export const createClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -9,7 +8,7 @@ export const createClient = () => {
     throw new Error('Missing Supabase environment variables');
   }
   
-  return createBrowserClient<Database>(
+  return createBrowserClient(
     supabaseUrl,
     supabaseKey,
     {
@@ -17,7 +16,7 @@ export const createClient = () => {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        flowType: 'pkce' // Use PKCE flow for better security
+        flowType: 'pkce'
       },
       global: {
         headers: {

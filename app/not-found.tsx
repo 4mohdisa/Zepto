@@ -2,54 +2,49 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, FileQuestion, Home } from 'lucide-react';
+import { FileQuestion } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { LandingNavbar } from '@/components/app/landing/navbar';
+import { LandingFooter } from '@/components/app/landing/footer';
 
 export default function NotFound() {
-  const router = useRouter();
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-lg border-primary/20">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto bg-primary/10 p-3 rounded-full">
-            <FileQuestion className="h-10 w-10 text-primary" />
+    <div className="min-h-screen bg-white flex flex-col">
+      <LandingNavbar />
+      
+      <main className="flex-1 flex items-center justify-center px-4 py-32">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 mb-6">
+              <FileQuestion className="h-10 w-10 text-[#635BFF]" />
+            </div>
+            <h1 className="text-6xl md:text-7xl font-bold text-gray-900 mb-4">
+              404
+            </h1>
+            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-4">
+              Page Not Found
+            </h2>
+            <p className="text-lg text-gray-600 mb-8 max-w-lg mx-auto">
+              The page you're looking for doesn't exist or has been moved. Let's get you back on track.
+            </p>
           </div>
-          <CardTitle className="text-2xl">Page Not Found</CardTitle>
-          <CardDescription>
-            The page you&apos;re looking for doesn&apos;t exist or has been moved.
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent className="text-center">
-          <p className="text-muted-foreground">
-            Please check the URL or navigate back to the dashboard.
-          </p>
-        </CardContent>
-        
-        <CardFooter className="flex justify-center gap-4">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              if (window.history.length > 1) {
-                router.back()
-              } else {
-                router.replace('/dashboard')
-              }
-            }}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Go Back
-          </Button>
-          <Button asChild>
-            <Link href="/dashboard">
-              <Home className="mr-2 h-4 w-4" />
-              Go to Dashboard
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/">
+              <Button size="lg" className="bg-[#635BFF] hover:bg-[#5851EA] text-white text-base px-8 py-6 rounded-full shadow-lg">
+                Go to Home
+              </Button>
             </Link>
-          </Button>
-        </CardFooter>
-      </Card>
+            <Link href="/help">
+              <Button size="lg" variant="outline" className="text-base px-8 py-6 rounded-full border-gray-300 hover:bg-gray-50">
+                Get Help
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </main>
+      
+      <LandingFooter />
     </div>
   );
 }

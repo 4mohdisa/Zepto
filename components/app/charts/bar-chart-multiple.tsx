@@ -83,9 +83,9 @@ export function SpendingChart({ transactions = [] }: SpendingChartProps) {
   const isEmpty = !chartData || chartData.length === 0;
   
   return (
-    <Card className="w-full h-full shadow-lg hover:shadow-xl transition-shadow duration-300 border-0 bg-card">
+    <Card className="w-full h-full shadow-lg hover:shadow-xl transition-all duration-300 border border-border hover:border-primary/30">
       <CardHeader className="flex flex-col items-stretch space-y-0 border-b border-border p-6">
-        <CardTitle className="text-lg font-semibold text-card-foreground">Monthly Spending</CardTitle>
+        <CardTitle className="text-lg font-bold text-foreground">Monthly Spending</CardTitle>
         <CardDescription className="text-muted-foreground">Income vs Expenses over time</CardDescription>
       </CardHeader>
       
@@ -93,10 +93,10 @@ export function SpendingChart({ transactions = [] }: SpendingChartProps) {
         {isEmpty ? (
           <div className="flex items-center justify-center h-full text-center">
             <div className="space-y-3">
-              <div className="w-12 h-12 mx-auto bg-muted rounded-full flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-muted-foreground" />
+              <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(76, 126, 243, 0.1) 0%, rgba(109, 76, 255, 0.1) 100%)' }}>
+                <TrendingUp className="w-7 h-7 text-primary" />
               </div>
-              <p className="text-muted-foreground">No data available</p>
+              <p className="text-muted-foreground font-medium">No data available</p>
             </div>
           </div>
         ) : (

@@ -188,11 +188,11 @@ export function TransactionChart({
   }, [chartData, metrics, activeChart, chartType]);
 
   return (
-    <Card className="col-span-3 w-full">
-      <CardHeader className="flex flex-col items-stretch space-y-0 border-b p-0 sm:flex-row">
+    <Card className="col-span-3 w-full shadow-lg hover:shadow-xl transition-all duration-300 border border-border hover:border-primary/30">
+      <CardHeader className="flex flex-col items-stretch space-y-0 border-b border-border p-0 sm:flex-row">
         <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-5 sm:py-6">
-          <CardTitle>Transaction Analysis</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-lg font-bold text-foreground">Transaction Analysis</CardTitle>
+          <CardDescription className="text-muted-foreground">
             Daily income and expenses overview
           </CardDescription>
         </div>
@@ -201,13 +201,13 @@ export function TransactionChart({
             <button
               key={metric.key}
               data-active={activeChart === metric.key}
-              className="relative z-30 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l data-[active=true]:bg-muted/50 sm:border-l sm:border-t-0 sm:px-8 sm:py-6"
+              className="relative z-30 flex flex-1 flex-col justify-center gap-1 border-t border-border px-6 py-4 text-left even:border-l data-[active=true]:bg-hover-surface sm:border-l sm:border-t-0 sm:px-8 sm:py-6 hover:bg-hover-surface/50 transition-colors"
               onClick={() => setActiveChart(metric.key)}
             >
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 {metric.label}
               </span>
-              <span className="text-lg font-bold leading-none sm:text-3xl">
+              <span className="text-lg font-bold leading-none sm:text-3xl text-foreground">
                 ${(total[metric.key] || 0).toLocaleString()}
               </span>
             </button>

@@ -1,5 +1,12 @@
-import { addDays, addWeeks, addMonths, addYears, parseISO, isValid, format } from 'date-fns';
+import { parseISO, isValid } from 'date-fns';
 import { RecurringTransaction, Transaction } from '@/app/types/transaction';
+import { 
+  normalizeDate, 
+  formatDateToISO, 
+  advanceDateByFrequency, 
+  getMostRecentDueDate 
+} from './frequency-utils';
+import { getCurrentTimestamp } from './format';
 
 /**
  * Predicts upcoming transactions based on recurring transactions
@@ -16,110 +23,59 @@ export function predictUpcomingTransactions(
   }
 
   const predictions: Transaction[] = [];
+  const now = normalizeDate(new Date());
+  const timestamp = getCurrentTimestamp();
   
-  // Process each recurring transaction
   recurringTransactions.forEach((rt) => {
-    // Skip if no valid start date
-    if (!rt.start_date) {
-      return;
-    }
+    if (!rt.start_date) return;
     
     const startDate = typeof rt.start_date === 'string' ? parseISO(rt.start_date) : rt.start_date;
+    if (!isValid(startDate)) return;
     
-    if (!isValid(startDate)) {
-      return;
-    }
-    const now = new Date();
-    let nextDate = startDate;
+    const endDate = rt.end_date 
+      ? (typeof rt.end_date === 'string' ? parseISO(rt.end_date) : rt.end_date)
+      : undefined;
     
-    // If start date is in the past, find the next occurrence
+    // Find the starting point for predictions
+    let nextDate = normalizeDate(startDate);
+    
+    // If start date is in the past, find the next future occurrence
     if (nextDate < now) {
-      // Calculate next occurrence based on frequency
-      switch (rt.frequency) {
-        case 'daily':
-          // Calculate days since start
-          const daysSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-          nextDate = addDays(startDate, daysSinceStart + 1);
-          break;
-          
-        case 'weekly':
-          // Calculate weeks since start
-          const weeksSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7));
-          nextDate = addWeeks(startDate, weeksSinceStart + 1);
-          break;
-          
-        case 'monthly':
-          // Calculate months since start (approximate)
-          const monthsSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-          nextDate = addMonths(startDate, monthsSinceStart + 1);
-          break;
-          
-        case 'yearly':
-          // Calculate years since start
-          const yearsSinceStart = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
-          nextDate = addYears(startDate, yearsSinceStart + 1);
-          break;
-          
-        default:
-          // Default to monthly if unknown frequency
-          nextDate = addMonths(now, 1);
-      }
+      const mostRecent = getMostRecentDueDate(startDate, rt.frequency, now);
+      nextDate = mostRecent ? advanceDateByFrequency(mostRecent, rt.frequency) : nextDate;
     }
     
-    // Generate 'limit' number of upcoming transactions
+    // Generate predictions
     for (let i = 0; i < limit; i++) {
-      // Check if we should stop generating based on end date
-      if (rt.end_date) {
-        const endDate = typeof rt.end_date === 'string' ? parseISO(rt.end_date) : rt.end_date;
-        if (nextDate > endDate) {
-          break;
-        }
+      // Stop if past end date
+      if (endDate && nextDate > endDate) break;
+      
+      // Only include future dates
+      if (nextDate >= now) {
+        predictions.push({
+          id: -1 * (predictions.length + 1),
+          user_id: rt.user_id,
+          date: formatDateToISO(nextDate),
+          amount: rt.amount,
+          name: rt.name,
+          description: rt.description || '',
+          type: rt.type,
+          account_type: rt.account_type,
+          category_id: rt.category_id,
+          category_name: rt.category_name || 'Uncategorized',
+          recurring_transaction_id: rt.id,
+          recurring_frequency: rt.frequency,
+          predicted: true,
+          created_at: timestamp,
+          updated_at: timestamp
+        });
       }
       
-      // Create predicted transaction
-      const prediction: Transaction = {
-        id: -1 * (predictions.length + 1), // Use negative IDs for predicted transactions
-        user_id: rt.user_id,
-        date: format(nextDate, 'yyyy-MM-dd'),
-        amount: rt.amount,
-        name: rt.name,
-        description: rt.description || '',
-        type: rt.type,
-        account_type: rt.account_type,
-        category_id: rt.category_id,
-        category_name: rt.category_name || 'Uncategorized',
-        recurring_transaction_id: rt.id,
-        recurring_frequency: rt.frequency,
-        predicted: true, // Mark as predicted
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      predictions.push(prediction);
-      
-      // Calculate the next date based on frequency
-      switch (rt.frequency) {
-        case 'daily':
-          nextDate = addDays(nextDate, 1);
-          break;
-        case 'weekly':
-          nextDate = addWeeks(nextDate, 1);
-          break;
-        case 'monthly':
-          nextDate = addMonths(nextDate, 1);
-          break;
-        case 'yearly':
-          nextDate = addYears(nextDate, 1);
-          break;
-        default:
-          // Default to monthly if unknown
-          nextDate = addMonths(nextDate, 1);
-      }
+      nextDate = advanceDateByFrequency(nextDate, rt.frequency);
     }
   });
   
-  // Sort by date (ascending)
-  return predictions.sort((a, b) => {
-    return new Date(a.date).getTime() - new Date(b.date).getTime();
-  });
+  return predictions.sort((a, b) => 
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
 }

@@ -9,15 +9,13 @@ Ledgerly is a financial application that helps users manage their finances by tr
 4. Document Transaction Extraction - A planned future feature that will allow users to extract transaction details directly from financial documents, eliminating manual entry (to be implemented after core features are complete).
 
 Tech Stack
-1. My build system is Next.js (version 14.1.0)
-2. My frontend framework is React (version 18.2.0)
-3. My styling is handled by Tailwind CSS (version 3.4.17)
+1. My build system is Next.js (version 15.0.3)
+2. My frontend framework is React (version 18.3.1)
+3. My styling is handled by Tailwind CSS (version 3.4.15)
 4. I'm using TypeScript (version 5.7.2) as my programming language
-5. I use React Hook Form (version 7.54.2) with Zod (version 3.24.1) for form validation
+5. I use React Hook Form (version 7.54.0) with Zod (version 3.23.8) for form validation
 6. I have Radix UI components implemented for UI primitives (various components v1.x-2.x)
-7. I use Redux Toolkit (version 2.5.0) with React Redux (version 9.2.0) for state management
-8. I have Supabase integrations for backend functionality (auth-helpers v0.10.0, supabase-js v2.47.10)
-9. I use Recharts (version 2.15.0) and TanStack Table (version 8.20.6) for data visualization
-10. I have AI capabilities via LlamaIndex (version 0.8.30) and OpenAI (version 4.77.3)
-11. My linting is handled by ESLint (version 8.57.1)
-12. I use various utility libraries including lodash (version 4.17.21), date-fns (version 3.6.0), and mathjs (version 14.0.1)
+7. I have Supabase integrations for backend functionality (ssr v0.5.2, supabase-js v2.47.10)
+8. I use Recharts (version 2.14.1) and TanStack Table (version 8.20.5) for data visualization
+9. My linting is handled by ESLint (version 8.57.1)
+10. I use date-fns (version 4.1.0) for date utilities
