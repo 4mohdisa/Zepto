@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   Sidebar, 
@@ -89,7 +90,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-2 hover:bg-hover-surface transition-colors">
                 <Link href="/dashboard" className="flex items-center gap-2">
-                  <img src="/logo.png" alt="Zepto" className="h-10 w-10 object-contain" />
+                  <Image src="/logo.png" alt="Zepto" width={40} height={40} className="object-contain" />
                   <span className="text-xl font-bold text-foreground group-data-[collapsible=icon]:hidden">
                     Zepto
                   </span>

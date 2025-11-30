@@ -96,7 +96,9 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
+      {/* Main Content Container */}
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 lg:py-10 max-w-[1600px]">
+        {/* Header Section */}
         <DashboardHeader
           userName={userName}
           selectedDate={selectedDate}
@@ -106,9 +108,10 @@ export default function DashboardPage() {
           onAddBalance={openBalanceDialog}
         />
 
-        <div className="space-y-8">
-          {/* KPI Cards */}
-          <section>
+        {/* Main Content Grid */}
+        <div className="space-y-6 md:space-y-8">
+          {/* KPI Metrics Section */}
+          <section className="w-full">
             <ErrorBoundaryWrapper>
               <MetricsCards 
                 transactions={chartTransactions}
@@ -117,23 +120,29 @@ export default function DashboardPage() {
             </ErrorBoundaryWrapper>
           </section>
 
-          {/* Charts or Empty State */}
+          {/* Charts Section or Empty State */}
           {hasTransactions ? (
-            <DashboardCharts transactions={chartTransactions} />
+            <section className="w-full">
+              <DashboardCharts transactions={chartTransactions} />
+            </section>
           ) : (
-            <EmptyState onAddTransaction={openAddTransaction} />
+            <section className="w-full">
+              <EmptyState onAddTransaction={openAddTransaction} />
+            </section>
           )}
 
-          {/* Recent Transactions */}
+          {/* Recent Transactions Section */}
           {hasTransactions && (
-            <RecentTransactions
-              transactions={recentTransactions}
-              isLoading={isLoading}
-              onDelete={handleDeleteTransaction}
-              onBulkDelete={handleBulkDelete}
-              onEdit={handleEditTransaction}
-              onBulkEdit={handleBulkEdit}
-            />
+            <section className="w-full pb-6">
+              <RecentTransactions
+                transactions={recentTransactions}
+                isLoading={isLoading}
+                onDelete={handleDeleteTransaction}
+                onBulkDelete={handleBulkDelete}
+                onEdit={handleEditTransaction}
+                onBulkEdit={handleBulkEdit}
+              />
+            </section>
           )}
         </div>
       </div>

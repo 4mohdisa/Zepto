@@ -37,39 +37,44 @@ export function RecentTransactions({
   onBulkEdit,
 }: RecentTransactionsProps) {
   return (
-    <section className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <section className="space-y-4 md:space-y-6 w-full">
+      {/* Section Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div className="space-y-1">
-          <h2 className="text-2xl font-bold text-foreground">Recent Transactions</h2>
-          <p className="text-muted-foreground">Your latest financial activity</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-foreground">Recent Transactions</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">Your latest financial activity</p>
         </div>
         <Button 
           variant="outline" 
           asChild
-          className="border-border hover:bg-hover-surface shadow-sm transition-colors"
+          size="default"
+          className="border-gray-200 hover:bg-gray-50 shadow-sm hover:shadow transition-all whitespace-nowrap"
         >
           <Link href="/transactions">View All Transactions</Link>
         </Button>
       </div>
       
-      <ErrorBoundaryWrapper>
-        <TransactionsTable
-          data={transactions as any}
-          loading={isLoading}
-          showFilters={false}
-          showPagination={false}
-          showRowsCount={false}
-          itemsPerPage={7}
-          sortBy={{
-            field: "date",
-            order: "desc"
-          }}
-          onDelete={onDelete}
-          onBulkDelete={onBulkDelete}
-          onEdit={onEdit}
-          onBulkEdit={onBulkEdit}
-        />
-      </ErrorBoundaryWrapper>
+      {/* Transactions Table */}
+      <div className="w-full">
+        <ErrorBoundaryWrapper>
+          <TransactionsTable
+            data={transactions as any}
+            loading={isLoading}
+            showFilters={false}
+            showPagination={false}
+            showRowsCount={false}
+            itemsPerPage={7}
+            sortBy={{
+              field: "date",
+              order: "desc"
+            }}
+            onDelete={onDelete}
+            onBulkDelete={onBulkDelete}
+            onEdit={onEdit}
+            onBulkEdit={onBulkEdit}
+          />
+        </ErrorBoundaryWrapper>
+      </div>
     </section>
   )
 }

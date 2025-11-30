@@ -13,11 +13,17 @@ export function PricingSection() {
     <section id="pricing" className="py-32 bg-gradient-to-b from-gray-50 to-white">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
+          <div className="inline-block px-4 py-2 bg-green-100 text-green-700 rounded-full text-sm font-semibold mb-6">
+            LIMITED TIME: 14-DAY FREE TRIAL
+          </div>
           <h2 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
-            Choose your plan
+            Investment in yourself
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Start with our free plan or unlock premium features with Pro
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-4">
+            Our Pro users save an average of <span className="font-semibold text-gray-900">$847/month</span>. That&apos;s over <span className="font-semibold text-gray-900">140x ROI</span>.
+          </p>
+          <p className="text-sm text-gray-500">
+            Join risk-free with our 14-day money-back guarantee
           </p>
         </div>
 
@@ -69,7 +75,7 @@ export function PricingSection() {
               </Link>
               
               <div className="space-y-4">
-                <p className="text-sm font-semibold text-gray-900 mb-4">What's included:</p>
+                <p className="text-sm font-semibold text-gray-900 mb-4">What&apos;s included:</p>
                 <div className="flex items-center gap-3">
                   <div className="w-5 h-5 rounded-full border-2 border-gray-300 flex items-center justify-center flex-shrink-0">
                     <CheckCircle2 className="h-3 w-3 text-gray-400" />
@@ -135,12 +141,17 @@ export function PricingSection() {
               </div>
               
               <Link href="/sign-up" className="block mb-8">
-                <Button size="lg" className="w-full bg-[#635BFF] hover:bg-[#5851EA] text-white text-base py-6 rounded-full shadow-lg transition-all">
-                  Start Pro trial →
+                <Button size="lg" className="w-full bg-[#635BFF] hover:bg-[#5851EA] text-white text-base py-6 rounded-full shadow-lg transition-all font-semibold">
+                  Start 14-Day Free Trial →
                 </Button>
               </Link>
               
               <div className="space-y-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-green-700 font-semibold text-center">
+                    💰 Avg. User ROI: 140x in first 90 days
+                  </p>
+                </div>
                 <p className="text-sm font-semibold text-gray-900 mb-4">Everything in Free, plus:</p>
                 <div className="flex items-center gap-3">
                   <div className="w-5 h-5 rounded-full bg-[#635BFF] flex items-center justify-center flex-shrink-0">
@@ -182,6 +193,12 @@ export function PricingSection() {
                   <div className="w-5 h-5 rounded-full bg-[#635BFF] flex items-center justify-center flex-shrink-0">
                     <CheckCircle2 className="h-3 w-3 text-white" />
                   </div>
+                  <span className="text-gray-700 text-sm font-medium">AI-powered savings recommendations</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-[#635BFF] flex items-center justify-center flex-shrink-0">
+                    <CheckCircle2 className="h-3 w-3 text-white" />
+                  </div>
                   <span className="text-gray-700 text-sm font-medium">Early access to new features</span>
                 </div>
               </div>
@@ -189,9 +206,14 @@ export function PricingSection() {
           </Card>
         </div>
 
-        <p className="text-center text-sm text-gray-600 mt-12">
-          All plans include bank-level security • Cancel anytime • No hidden fees
-        </p>
+        <div className="text-center mt-12">
+          <p className="text-sm text-gray-600 mb-4">
+            ✓ 14-day money-back guarantee • ✓ Bank-level security • ✓ Cancel anytime • ✓ No hidden fees
+          </p>
+          <p className="text-xs text-gray-500">
+            Over 10,000 professionals trust Zepto with their finances
+          </p>
+        </div>
       </div>
     </section>
   )

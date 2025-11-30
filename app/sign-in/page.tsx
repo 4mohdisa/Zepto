@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
 import { toast } from "sonner"
@@ -123,7 +124,7 @@ function SignInForm() {
       <Card className="w-full max-w-md border-border shadow-2xl bg-white">
         <CardHeader className="space-y-4">
           <div className="flex justify-center items-center gap-2 mb-2">
-            <img src="/logo.png" alt="Zepto" className="h-14 w-14 object-contain" />
+            <Image src="/logo.png" alt="Zepto" width={56} height={56} className="object-contain" />
             <h1 className="text-3xl font-bold text-foreground">
               Zepto
             </h1>

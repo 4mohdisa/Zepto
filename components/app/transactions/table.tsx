@@ -136,21 +136,21 @@ export function TransactionsTable({
     <div className={cn("w-full space-y-4", className)}>
 
       {showFilters && (
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <Input
             placeholder="Filter transactions..."
             value={globalFilter}
             onChange={(event) => setGlobalFilter(event.target.value)}
-            className="max-w-sm"
+            className="w-full sm:max-w-sm"
           />
-          <div className="flex flex-col md:flex-row gap-2">
+          <div className="flex flex-col xs:flex-row gap-2 w-full sm:w-auto">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="w-full xs:w-auto border-gray-200 hover:bg-gray-50">
                   Columns <ChevronDown className="ml-2 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-popover border-border shadow-xl">
+              <DropdownMenuContent align="end" className="bg-white border-gray-200 shadow-xl">
                 {table
                   .getAllColumns()
                   .filter((column) => column.getCanHide())
@@ -158,7 +158,7 @@ export function TransactionsTable({
                     return (
                       <DropdownMenuCheckboxItem
                         key={column.id}
-                        className="capitalize hover:bg-hover-surface focus:bg-hover-surface"
+                        className="capitalize hover:bg-gray-50 focus:bg-gray-50"
                         checked={column.getIsVisible()}
                         onCheckedChange={(value) =>
                           column.toggleVisibility(!!value)
@@ -174,21 +174,21 @@ export function TransactionsTable({
             {type !== 'upcoming' && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline">
+                  <Button variant="outline" className="w-full xs:w-auto border-gray-200 hover:bg-gray-50">
                     Bulk Actions <ChevronDown className="ml-2 h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover border-border shadow-xl">
+                <DropdownMenuContent align="end" className="bg-white border-gray-200 shadow-xl">
                   <DropdownMenuItem 
                     onClick={openBulkDeleteDialog}
-                    className="hover:bg-hover-surface focus:bg-hover-surface text-destructive"
+                    className="hover:bg-gray-50 focus:bg-gray-50 text-red-600"
                   >
                     Delete Selected
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-border" />
+                  <DropdownMenuSeparator className="bg-gray-200" />
                   <DropdownMenuItem 
                     onClick={openBulkCategoryDialog}
-                    className="hover:bg-hover-surface focus:bg-hover-surface"
+                    className="hover:bg-gray-50 focus:bg-gray-50"
                   >
                     Change Category
                   </DropdownMenuItem>
@@ -199,14 +199,16 @@ export function TransactionsTable({
         </div>
       )}
       
-      <div className="rounded-lg border border-border overflow-hidden bg-card shadow-lg hover:shadow-xl transition-all duration-300">
-        <Table>
+      {/* Table container with horizontal scroll on mobile */}
+      <div className="rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table className="min-w-full">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="border-b border-border bg-surface">
+              <TableRow key={headerGroup.id} className="border-b border-gray-200 bg-gray-50">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} className="text-xs font-semibold text-muted-foreground py-3">
+                    <TableHead key={header.id} className="text-xs font-semibold text-gray-600 py-3 px-4 whitespace-nowrap">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -224,8 +226,8 @@ export function TransactionsTable({
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-[400px]">
                   <div className="flex flex-col items-center justify-center h-full">
-                    <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
-                    <p className="text-muted-foreground">Loading transactions...</p>
+                    <Loader2 className="h-8 w-8 text-[#635BFF] animate-spin mb-4" />
+                    <p className="text-gray-600">Loading transactions...</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -234,10 +236,10 @@ export function TransactionsTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="border-b border-border/50 hover:bg-hover-surface transition-colors"
+                  className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-4 text-sm text-foreground">
+                    <TableCell key={cell.id} className="py-4 px-4 text-sm text-gray-900">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -249,11 +251,11 @@ export function TransactionsTable({
                   {customEmptyState ? (
                     customEmptyState
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-full">
-                      <div className="rounded-full w-16 h-16 mb-4 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(76, 126, 243, 0.1) 0%, rgba(109, 76, 255, 0.1) 100%)' }}>
-                        <CreditCard className="h-8 w-8 text-primary" />
+                    <div className="flex flex-col items-center justify-center h-full px-4">
+                      <div className="rounded-full w-16 h-16 mb-4 flex items-center justify-center bg-gradient-to-br from-[#635BFF]/10 to-blue-500/10">
+                        <CreditCard className="h-8 w-8 text-[#635BFF]" />
                       </div>
-                      <p className="text-muted-foreground font-medium">No transactions yet</p>
+                      <p className="text-gray-600 font-medium">No transactions yet</p>
                     </div>
                   )}
                 </TableCell>
@@ -261,23 +263,25 @@ export function TransactionsTable({
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {(showPagination || showRowsCount) && table.getFilteredRowModel().rows.length >= 11 && (
-        <div className="flex items-center justify-end space-x-2 py-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 py-4 px-2">
           {showRowsCount && (
-            <div className="flex-1 text-sm text-muted-foreground">
-              {table.getFilteredSelectedRowModel().rows.length} of{" "}
-              {table.getFilteredRowModel().rows.length} row(s) selected.
+            <div className="text-sm text-gray-600 order-2 sm:order-1">
+              <span className="font-medium">{table.getFilteredSelectedRowModel().rows.length}</span> of{" "}
+              <span className="font-medium">{table.getFilteredRowModel().rows.length}</span> row(s) selected.
             </div>
           )}
           {showPagination && (
-            <div className="space-x-2">
+            <div className="flex gap-2 order-1 sm:order-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
+                className="flex-1 sm:flex-none border-gray-200 hover:bg-gray-50 disabled:opacity-50"
               >
                 Previous
               </Button>
@@ -286,6 +290,7 @@ export function TransactionsTable({
                 size="sm"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
+                className="flex-1 sm:flex-none border-gray-200 hover:bg-gray-50 disabled:opacity-50"
               >
                 Next
               </Button>

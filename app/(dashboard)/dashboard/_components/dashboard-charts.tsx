@@ -106,9 +106,9 @@ export function DashboardCharts({ transactions }: DashboardChartsProps) {
   return (
     <section className="space-y-6">
       {/* Primary Charts Row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Main Transaction Chart */}
-        <div className="xl:col-span-2">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-6">
+        {/* Main Transaction Chart - Takes 2/3 on desktop */}
+        <div className="xl:col-span-2 w-full">
           <ErrorBoundaryWrapper>
             <Suspense fallback={<ChartSkeleton />}>
               <MemoizedTransactionChart transactions={transactions} />
@@ -116,8 +116,8 @@ export function DashboardCharts({ transactions }: DashboardChartsProps) {
           </ErrorBoundaryWrapper>
         </div>
 
-        {/* Category Breakdown */}
-        <div>
+        {/* Category Breakdown - Takes 1/3 on desktop */}
+        <div className="w-full">
           <ErrorBoundaryWrapper>
             <Suspense fallback={<ChartSkeleton />}>
               <MemoizedPieDonutChart transactions={transactions} />
@@ -126,19 +126,23 @@ export function DashboardCharts({ transactions }: DashboardChartsProps) {
         </div>
       </div>
 
-      {/* Secondary Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ErrorBoundaryWrapper>
-          <Suspense fallback={<ChartSkeleton />}>
-            <MemoizedNetBalanceChart transactions={transactions} />
-          </Suspense>
-        </ErrorBoundaryWrapper>
+      {/* Secondary Charts Row - Equal width on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        <div className="w-full">
+          <ErrorBoundaryWrapper>
+            <Suspense fallback={<ChartSkeleton />}>
+              <MemoizedNetBalanceChart transactions={transactions} />
+            </Suspense>
+          </ErrorBoundaryWrapper>
+        </div>
 
-        <ErrorBoundaryWrapper>
-          <Suspense fallback={<ChartSkeleton />}>
-            <MemoizedSpendingChart transactions={transactions} />
-          </Suspense>
-        </ErrorBoundaryWrapper>
+        <div className="w-full">
+          <ErrorBoundaryWrapper>
+            <Suspense fallback={<ChartSkeleton />}>
+              <MemoizedSpendingChart transactions={transactions} />
+            </Suspense>
+          </ErrorBoundaryWrapper>
+        </div>
       </div>
     </section>
   )

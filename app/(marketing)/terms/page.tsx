@@ -1,12 +1,8 @@
-import { LandingNavbar } from '@/components/app/landing/navbar'
-import { LandingFooter } from '@/components/app/landing/footer'
 import { FileText } from 'lucide-react'
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-white">
-      <LandingNavbar />
-
+    <>
       {/* Header */}
       <section className="pt-32 pb-16 bg-gradient-to-b from-gray-50 to-white">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
@@ -121,8 +117,6 @@ export default function TermsPage() {
           </div>
         </div>
       </section>
-
-      <LandingFooter />
-    </div>
+    </>
   )
 }

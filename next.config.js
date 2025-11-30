@@ -9,6 +9,9 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   reactStrictMode: true,
+  // Performance optimizations
+  poweredByHeader: false, // Remove X-Powered-By header for security
+  compress: true, // Enable gzip compression
   images: {
     remotePatterns: [
       {
@@ -18,6 +21,9 @@ const nextConfig = {
         pathname: '/storage/v1/object/public/**',
       },
     ],
+    // Image optimization settings
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60,
   },
   webpack: (config, { isServer, dev }) => {
     // Only modify cache in development to reduce serialization warnings

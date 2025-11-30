@@ -63,18 +63,40 @@ export default function RecurringTransactionsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        <RecurringTransactionsTable
-          recurringTransactions={recurringTransactions}
-          loading={loading}
-          dateRange={state.dateRange as DateRange | undefined}
-          onDelete={handleDelete}
-          onBulkDelete={handleBulkDelete}
-          onEdit={handleEdit}
-          onBulkEdit={handleBulkEdit}
-        />
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 lg:py-10 max-w-[1600px]">
+        {/* Page Header */}
+        <div className="mb-6 md:mb-8">
+          <div className="space-y-1">
+            <h1 className="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#635BFF] to-blue-600">
+              Recurring Transactions
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
+              Manage your recurring transactions and view upcoming predictions
+            </p>
+          </div>
+        </div>
 
-        <UpcomingTransactionsSection limit={10} />
+        {/* Content Sections */}
+        <div className="space-y-6 md:space-y-8 w-full">
+          {/* Recurring Transactions Table */}
+          <section className="w-full">
+            <RecurringTransactionsTable
+              recurringTransactions={recurringTransactions}
+              loading={loading}
+              dateRange={state.dateRange as DateRange | undefined}
+              onDelete={handleDelete}
+              onBulkDelete={handleBulkDelete}
+              onEdit={handleEdit}
+              onBulkEdit={handleBulkEdit}
+              onAddRecurring={openAddDialog}
+            />
+          </section>
+
+          {/* Upcoming Transactions */}
+          <section className="w-full pb-6">
+            <UpcomingTransactionsSection limit={10} />
+          </section>
+        </div>
       </div>
 
       {/* Add Dialog */}

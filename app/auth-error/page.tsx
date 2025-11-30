@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, Home } from 'lucide-react'
@@ -15,7 +16,7 @@ export default async function AuthErrorPage({
       <Card className="w-full max-w-md border-border shadow-2xl bg-white">
         <CardHeader className="space-y-4">
           <div className="flex justify-center items-center gap-2 mb-4">
-            <img src="/logo.png" alt="Zepto" className="h-14 w-14 object-contain" />
+            <Image src="/logo.png" alt="Zepto" width={56} height={56} className="object-contain" />
             <h1 className="text-3xl font-bold text-foreground">
               Zepto
             </h1>

@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { LandingNavbar } from '@/components/app/landing/navbar'
-import { LandingFooter } from '@/components/app/landing/footer'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -227,9 +225,7 @@ export default function HelpPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <LandingNavbar />
-
+    <>
       {/* Header */}
       <section className="pt-32 pb-16 bg-gradient-to-b from-blue-50 to-white">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
@@ -292,7 +288,7 @@ export default function HelpPage() {
               Still need help?
             </h2>
             <p className="text-lg text-gray-600">
-              Send us a message and we'll get back to you within 24 hours.
+              Send us a message and we&apos;ll get back to you within 24 hours.
             </p>
           </div>
 
@@ -446,8 +442,6 @@ export default function HelpPage() {
           </div>
         </div>
       </section>
-
-      <LandingFooter />
-    </div>
+    </>
   )
 }

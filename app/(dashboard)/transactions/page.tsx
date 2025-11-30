@@ -48,31 +48,40 @@ export default function TransactionsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
-              All Transactions
-            </h1>
-            <p className="text-sm text-muted-foreground mt-2">
-              View and manage all your financial transactions
-            </p>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 lg:py-10 max-w-[1600px]">
+        {/* Page Header */}
+        <div className="mb-6 md:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="space-y-1">
+              <h1 className="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#635BFF] to-blue-600">
+                All Transactions
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                View and manage all your financial transactions
+              </p>
+            </div>
           </div>
         </div>
         
-        <TransactionsContent
-          transactions={transactionsList}
-          loading={loading}
-          error={error}
-          dateRange={dateRange}
-          onRefresh={refresh}
-          onDelete={handleDelete}
-          onBulkDelete={handleBulkDelete}
-          onEdit={handleEdit}
-          onBulkEdit={handleBulkEdit}
-        />
+        {/* Transactions Content */}
+        <div className="w-full">
+          <TransactionsContent
+            transactions={transactionsList}
+            loading={loading}
+            error={error}
+            dateRange={dateRange}
+            onRefresh={refresh}
+            onDelete={handleDelete}
+            onBulkDelete={handleBulkDelete}
+            onEdit={handleEdit}
+            onBulkEdit={handleBulkEdit}
+            onDateRangeChange={setDateRange}
+            onAddTransaction={openAddDialog}
+          />
+        </div>
       </div>
 
+      {/* Transaction Dialog */}
       {isAddTransactionOpen && (
         <TransactionDialog
           isOpen={isAddTransactionOpen}
