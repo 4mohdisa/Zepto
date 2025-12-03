@@ -88,9 +88,12 @@ export function TransactionDialog({
     accountTypes.map(t => ({ value: t.value, label: t.label })), 
   [])
   
-  const categoryOptions = useMemo(() => 
-    categories?.map(c => ({ value: String(c.id), label: c.name })) || [], 
-  [categories])
+  const categoryOptions = useMemo(() => {
+    console.log('🏷️ Building category options from:', categories?.length || 0, 'categories')
+    const options = categories?.map(c => ({ value: String(c.id), label: c.name })) || []
+    console.log('📋 Category options:', options)
+    return options
+  }, [categories])
   
   const frequencyOptions = useMemo(() => [
     { value: "Never", label: "One-time Transaction" },
