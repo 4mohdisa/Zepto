@@ -33,10 +33,13 @@ export function useCategories() {
           .order('name', { ascending: true })
 
         console.log('📊 Categories response:', { data, error })
+        console.log('📊 Data type:', typeof data, 'Is array:', Array.isArray(data))
+        console.log('📊 Data contents:', JSON.stringify(data))
 
         if (error) throw error
 
         console.log('✅ Categories loaded:', data?.length || 0)
+        console.log('✅ Setting categories state with:', data)
         setCategories(data || [])
       } catch (err) {
         console.error('❌ Error fetching categories:', err)
