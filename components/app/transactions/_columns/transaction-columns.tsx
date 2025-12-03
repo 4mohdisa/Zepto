@@ -24,7 +24,7 @@ type TransactionType = 'upcoming' | 'recurring' | 'regular'
 interface ColumnOptions {
   type: TransactionType
   onEdit: (transaction: Transaction) => void
-  onDelete: (id: number) => void
+  onDelete: (id: number | string) => void
 }
 
 function getCategoryName(categoryId: number): string {

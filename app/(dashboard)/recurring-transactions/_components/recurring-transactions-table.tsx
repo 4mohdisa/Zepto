@@ -11,10 +11,10 @@ interface RecurringTransactionsTableProps {
   recurringTransactions: RecurringTransaction[]
   loading: boolean
   dateRange?: DateRange
-  onDelete: (id: number) => Promise<void>
-  onBulkDelete: (ids: number[]) => Promise<void>
-  onEdit: (id: number, data: Partial<Transaction>) => Promise<void>
-  onBulkEdit: (ids: number[], changes: Partial<Transaction>) => Promise<void>
+  onDelete: (id: number | string) => Promise<void>
+  onBulkDelete: (ids: (number | string)[]) => Promise<void>
+  onEdit: (id: number | string, data: Partial<RecurringTransaction>) => Promise<void>
+  onBulkEdit: (ids: (number | string)[], changes: Partial<RecurringTransaction>) => Promise<void>
   onAddRecurring?: () => void
 }
 
@@ -93,8 +93,8 @@ export function RecurringTransactionsTable({
           type="recurring"
           onDelete={onDelete}
           onBulkDelete={onBulkDelete}
-          onEdit={onEdit}
-          onBulkEdit={onBulkEdit}
+          onEdit={onEdit as any}
+          onBulkEdit={onBulkEdit as any}
         />
       </div>
     </section>

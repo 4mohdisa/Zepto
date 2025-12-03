@@ -20,24 +20,20 @@ export function useCategories() {
 
   useEffect(() => {
     const supabase = createClient()
-    
+
     async function fetchCategories() {
       try {
         setLoading(true)
-        
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (!session) {
-          throw new Error('No active session found')
-        }
 
+        // Fetch all categories (default categories + user-specific categories)
+        // RLS policies will handle filtering based on Clerk JWT token
         const { data, error } = await supabase
           .from('categories')
           .select('*')
           .order('name', { ascending: true })
-        
+
         if (error) throw error
-        
+
         setCategories(data || [])
       } catch (err) {
         console.error('Error fetching categories:', err)
@@ -47,7 +43,7 @@ export function useCategories() {
         setLoading(false)
       }
     }
-    
+
     fetchCategories()
   }, [])
 

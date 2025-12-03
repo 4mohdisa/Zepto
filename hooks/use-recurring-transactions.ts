@@ -14,10 +14,10 @@ export function useRecurringTransactions(): {
   error: Error | null;
   refresh: () => Promise<void>;
   createRecurringTransaction: (data: Partial<RecurringTransaction>) => Promise<void>;
-  updateRecurringTransaction: (id: number, data: Partial<RecurringTransaction>) => Promise<void>;
-  deleteRecurringTransaction: (id: number) => Promise<void>;
-  bulkDeleteRecurringTransactions: (ids: number[]) => Promise<void>;
-  bulkUpdateRecurringTransactions: (ids: number[], changes: Partial<RecurringTransaction>) => Promise<void>;
+  updateRecurringTransaction: (id: number | string, data: Partial<RecurringTransaction>) => Promise<void>;
+  deleteRecurringTransaction: (id: number | string) => Promise<void>;
+  bulkDeleteRecurringTransactions: (ids: (number | string)[]) => Promise<void>;
+  bulkUpdateRecurringTransactions: (ids: (number | string)[], changes: Partial<RecurringTransaction>) => Promise<void>;
 } {
   const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([])
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0)
@@ -103,7 +103,7 @@ export function useRecurringTransactions(): {
   }, [user?.id, supabase, refresh])
 
   // Update recurring transaction
-  const updateRecurringTransaction = useCallback(async (id: number, data: Partial<RecurringTransaction>) => {
+  const updateRecurringTransaction = useCallback(async (id: number | string, data: Partial<RecurringTransaction>) => {
     if (!user?.id) throw new Error('User not authenticated')
 
     try {
@@ -118,7 +118,7 @@ export function useRecurringTransactions(): {
       const { error } = await supabase
         .from('recurring_transactions')
         .update(updateData)
-        .eq('id', id)
+        .eq('id', Number(id))
         .eq('user_id', user.id)
 
       if (error) throw error
@@ -133,14 +133,14 @@ export function useRecurringTransactions(): {
   }, [user?.id, supabase, refresh])
 
   // Delete recurring transaction
-  const deleteRecurringTransaction = useCallback(async (id: number) => {
+  const deleteRecurringTransaction = useCallback(async (id: number | string) => {
     if (!user?.id) throw new Error('User not authenticated')
 
     try {
       const { error } = await supabase
         .from('recurring_transactions')
         .delete()
-        .eq('id', id)
+        .eq('id', Number(id))
         .eq('user_id', user.id)
 
       if (error) throw error
@@ -155,14 +155,14 @@ export function useRecurringTransactions(): {
   }, [user?.id, supabase, refresh])
 
   // Bulk delete
-  const bulkDeleteRecurringTransactions = useCallback(async (ids: number[]) => {
+  const bulkDeleteRecurringTransactions = useCallback(async (ids: (number | string)[]) => {
     if (!user?.id) throw new Error('User not authenticated')
 
     try {
       const { error } = await supabase
         .from('recurring_transactions')
         .delete()
-        .in('id', ids)
+        .in('id', ids.map(id => Number(id)))
         .eq('user_id', user.id)
 
       if (error) throw error
@@ -177,7 +177,7 @@ export function useRecurringTransactions(): {
   }, [user?.id, supabase, refresh])
 
   // Bulk update
-  const bulkUpdateRecurringTransactions = useCallback(async (ids: number[], changes: Partial<RecurringTransaction>) => {
+  const bulkUpdateRecurringTransactions = useCallback(async (ids: (number | string)[], changes: Partial<RecurringTransaction>) => {
     if (!user?.id) throw new Error('User not authenticated')
 
     try {
@@ -192,7 +192,7 @@ export function useRecurringTransactions(): {
       const { error } = await supabase
         .from('recurring_transactions')
         .update(updateData)
-        .in('id', ids)
+        .in('id', ids.map(id => Number(id)))
         .eq('user_id', user.id)
 
       if (error) throw error
@@ -214,9 +214,24 @@ export function useRecurringTransactions(): {
   }, [user?.id, fetchRecurringTransactions, refreshTrigger])
 
   // Generate predicted upcoming transactions in-memory
+  // Generate up to 12 total upcoming transactions across all recurring transactions
   const upcomingTransactions = useMemo((): Transaction[] => {
-    // Generate 2 upcoming transactions per recurring transaction
-    return predictUpcomingTransactions(recurringTransactions, 2)
+    if (!recurringTransactions.length) return []
+
+    // Calculate how many predictions per recurring transaction
+    // to get approximately 12 total (but at least 2 per transaction)
+    const predictionsPerTransaction = Math.max(
+      2,
+      Math.ceil(12 / recurringTransactions.length)
+    )
+
+    const allPredictions = predictUpcomingTransactions(
+      recurringTransactions,
+      predictionsPerTransaction
+    )
+
+    // Return only the first 12 upcoming transactions sorted by date
+    return allPredictions.slice(0, 12)
   }, [recurringTransactions])
 
   return {

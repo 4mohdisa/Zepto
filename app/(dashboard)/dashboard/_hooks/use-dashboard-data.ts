@@ -2,12 +2,12 @@ import { useMemo } from 'react'
 import { format } from 'date-fns'
 
 interface RawTransaction {
-  id?: number
-  user_id?: string
+  id: number | string
+  user_id: string
   name: string
   amount: number
-  type: string
-  date: string | Date
+  type: string | null
+  date: string
   category_name?: string | null
   category_id?: number | null
   description?: string | null
@@ -17,7 +17,7 @@ interface RawTransaction {
 interface ChartTransaction {
   date: string
   amount: number
-  type: string
+  type: string | null
   category_name: string | null
 }
 
@@ -40,9 +40,9 @@ interface DashboardData {
   hasTransactions: boolean
 }
 
-function formatDate(date: string | Date): string {
-  if (typeof date === 'string') return date
-  return format(date, 'yyyy-MM-dd')
+// Date is already in string format from database
+function formatDate(date: string): string {
+  return date
 }
 
 export function useDashboardData(transactions: RawTransaction[] | undefined): DashboardData {
@@ -59,10 +59,10 @@ export function useDashboardData(transactions: RawTransaction[] | undefined): Da
 
   const recentTransactions = useMemo((): TableTransaction[] => {
     if (!transactions) return []
-    
+
     return transactions.slice(0, 7).map(t => ({
-      id: t.id?.toString() || '',
-      user_id: t.user_id?.toString() || '',
+      id: String(t.id),
+      user_id: t.user_id,
       name: t.name,
       amount: Number(t.amount),
       type: (t.type === 'Income' ? 'Income' : 'Expense') as 'Income' | 'Expense',

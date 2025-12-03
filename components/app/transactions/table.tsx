@@ -43,10 +43,10 @@ interface TransactionsTableProps {
   className?: string
   dateRange?: { from?: Date; to?: Date }
   type?: TransactionType
-  onDelete?: (id: number) => Promise<void>
-  onEdit?: (id: number, data: Partial<Transaction>) => void
-  onBulkDelete?: (ids: number[]) => Promise<void>
-  onBulkEdit?: (ids: number[], changes: Partial<Transaction>) => Promise<void>
+  onDelete?: (id: number | string) => Promise<void>
+  onEdit?: (id: number | string, data: Partial<Transaction>) => void
+  onBulkDelete?: (ids: (number | string)[]) => Promise<void>
+  onBulkEdit?: (ids: (number | string)[], changes: Partial<Transaction>) => Promise<void>
   customEmptyState?: React.ReactNode
 }
 

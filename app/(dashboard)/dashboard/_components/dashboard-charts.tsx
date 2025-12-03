@@ -29,7 +29,7 @@ const NetBalanceChart = dynamic(
 interface ChartTransaction {
   date: string
   amount: number
-  type: string
+  type: string | null
   category_name: string | null
 }
 

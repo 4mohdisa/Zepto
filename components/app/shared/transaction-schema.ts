@@ -36,7 +36,7 @@ export const transactionSchema = z.object({
 
 export const recurringTransactionSchema = z.object({
   ...baseSchema,
-  frequency: z.custom<FrequencyType>((val) => 
+  frequency: z.custom<FrequencyType>((val) =>
     frequencies.some(item => item.value === val) && val !== "Never"
   ),
   start_date: z.date({

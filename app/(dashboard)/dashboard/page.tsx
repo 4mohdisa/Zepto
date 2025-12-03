@@ -87,7 +87,7 @@ export default function DashboardPage() {
   const openBalanceDialog = useCallback(() => setIsBalanceDialogOpen(true), [])
 
   // Get user display name
-  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || 'there'
+  const userName = user?.fullName || user?.email?.split('@')[0] || 'there'
 
   // Show loading skeleton on initial load
   if (isLoading && !hasTransactions) {

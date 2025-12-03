@@ -3,20 +3,21 @@ export type AccountType = 'Cash' | 'Savings' | 'Checking';
 export type FrequencyType = 'Never' | 'Daily' | 'Weekly' | 'Bi-Weekly' | 'Tri-Weekly' | 'Monthly' | 'Bi-Monthly' | 'Quarterly' | 'Semi-Annually' | 'Annually' | 'Working Days Only' | 'First Day of Week' | 'Last Day of Week';
 
 export interface Transaction {
-  id?: number;
-  user_id: string;
-  date: Date | string;
+  id: number | string; // number from DB, string for temp IDs
+  user_id: string; // UUID string matching Supabase profiles.id
+  date: string; // ISO date string (YYYY-MM-DD)
   amount: number;
   name: string;
   description?: string | null;
-  type: string;
-  account_type: string;
-  category_id: number;
-  category_name?: string | null;
+  type: string | null; // Matches DB schema (string | null)
+  account_type: string | null; // Matches DB schema
+  category_id: number | null; // Foreign key, can be null
+  category_name?: string | null; // Denormalized or from join
   recurring_frequency?: string | null;
   file_id?: number | null;
   created_at?: string | null;
   updated_at?: string | null;
+  // These fields are not in transactions table but used in app
   start_date?: Date | string;
   end_date?: Date | string | null;
   recurring_transaction_id?: number | null;

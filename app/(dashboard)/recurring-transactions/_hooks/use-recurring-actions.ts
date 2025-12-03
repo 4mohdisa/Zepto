@@ -1,12 +1,12 @@
 import { useCallback, useEffect } from 'react'
-import { Transaction } from "@/app/types/transaction"
+import { RecurringTransaction } from "@/app/types/transaction"
 
 interface UseRecurringActionsProps {
   refresh: () => Promise<void>
-  deleteRecurringTransaction: (id: number) => Promise<void>
-  bulkDeleteRecurringTransactions: (ids: number[]) => Promise<void>
-  updateRecurringTransaction: (id: number, data: Partial<Transaction>) => Promise<void>
-  bulkUpdateRecurringTransactions: (ids: number[], changes: Partial<Transaction>) => Promise<void>
+  deleteRecurringTransaction: (id: number | string) => Promise<void>
+  bulkDeleteRecurringTransactions: (ids: (number | string)[]) => Promise<void>
+  updateRecurringTransaction: (id: number | string, data: Partial<RecurringTransaction>) => Promise<void>
+  bulkUpdateRecurringTransactions: (ids: (number | string)[], changes: Partial<RecurringTransaction>) => Promise<void>
   onOpenAddDialog: () => void
 }
 
@@ -39,7 +39,7 @@ export function useRecurringActions({
     }
   }, [refresh])
 
-  const handleDelete = useCallback(async (id: number) => {
+  const handleDelete = useCallback(async (id: number | string) => {
     try {
       await deleteRecurringTransaction(id)
     } catch (error) {
@@ -47,7 +47,7 @@ export function useRecurringActions({
     }
   }, [deleteRecurringTransaction])
 
-  const handleBulkDelete = useCallback(async (ids: number[]) => {
+  const handleBulkDelete = useCallback(async (ids: (number | string)[]) => {
     try {
       await bulkDeleteRecurringTransactions(ids)
     } catch (error) {
@@ -55,7 +55,7 @@ export function useRecurringActions({
     }
   }, [bulkDeleteRecurringTransactions])
 
-  const handleEdit = useCallback(async (id: number, formData: Partial<Transaction>) => {
+  const handleEdit = useCallback(async (id: number | string, formData: Partial<RecurringTransaction>) => {
     try {
       await updateRecurringTransaction(id, formData)
     } catch (error) {
@@ -63,7 +63,7 @@ export function useRecurringActions({
     }
   }, [updateRecurringTransaction])
 
-  const handleBulkEdit = useCallback(async (ids: number[], changes: Partial<Transaction>) => {
+  const handleBulkEdit = useCallback(async (ids: (number | string)[], changes: Partial<RecurringTransaction>) => {
     try {
       await bulkUpdateRecurringTransactions(ids, changes)
     } catch (error) {

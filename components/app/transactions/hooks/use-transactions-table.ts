@@ -23,8 +23,8 @@ interface UseTransactionsTableProps {
   data: Transaction[]
   type: TransactionType
   itemsPerPage: number
-  onDelete?: (id: number) => Promise<void>
-  onEdit?: (id: number, data: Partial<Transaction>) => void
+  onDelete?: (id: number | string) => Promise<void>
+  onEdit?: (id: number | string, data: Partial<Transaction>) => void
 }
 
 interface UseTransactionsTableReturn {
@@ -39,8 +39,8 @@ interface UseTransactionsTableReturn {
   isBulkDeleteDialogOpen: boolean
   isBulkCategoryDialogOpen: boolean
   transactionDialogData: Partial<TransactionFormValues>
-  transactionToDelete: number | null
-  transactionsToDelete: number[]
+  transactionToDelete: number | string | null
+  transactionsToDelete: (number | string)[]
   handleDeleteTransaction: () => void
   getSelectedTransactionIds: () => number[]
   openBulkDeleteDialog: () => void
@@ -72,7 +72,7 @@ export function useTransactionsTable({
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [transactionDialogData, setTransactionDialogData] = useState<Partial<TransactionFormValues>>({})
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
-  const [transactionToDelete, setTransactionToDelete] = useState<number | null>(null)
+  const [transactionToDelete, setTransactionToDelete] = useState<number | string | null>(null)
   const [isBulkCategoryDialogOpen, setIsBulkCategoryDialogOpen] = useState(false)
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false)
   const [isRecurringTransactionDialogOpen, setIsRecurringTransactionDialogOpen] = useState(false)
@@ -105,7 +105,7 @@ export function useTransactionsTable({
       const formData: Partial<TransactionFormValues> = {
         name: transaction.name,
         amount: transaction.amount,
-        date: transaction.date instanceof Date ? transaction.date : new Date(transaction.date),
+        date: new Date(transaction.date), // transaction.date is always a string from DB
         type: transaction.type as TransactionFormValues['type'],
         account_type: transaction.account_type as TransactionFormValues['account_type'],
         category_id: transaction.category_id ? String(transaction.category_id) : '',
@@ -127,7 +127,7 @@ export function useTransactionsTable({
   }, [transactionToDelete, onDelete])
 
   // Dialog controls
-  const openDeleteDialog = useCallback((id: number) => {
+  const openDeleteDialog = useCallback((id: number | string) => {
     setTransactionToDelete(id)
     setIsConfirmDialogOpen(true)
   }, [])

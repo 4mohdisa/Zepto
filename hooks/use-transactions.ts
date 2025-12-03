@@ -56,8 +56,20 @@ export function useTransactions(dateRange?: DateRange) {
         if (error) throw error
 
         const processedTransactions = (data || []).map(transaction => ({
-          ...transaction,
-          category_name: transaction.categories?.name || transaction.category_name || 'Uncategorized'
+          id: transaction.id,
+          user_id: transaction.user_id || user.id,
+          date: transaction.date,
+          amount: transaction.amount,
+          name: transaction.name,
+          description: transaction.description,
+          type: transaction.type,
+          account_type: transaction.account_type,
+          category_id: transaction.category_id,
+          category_name: transaction.categories?.name || transaction.category_name || 'Uncategorized',
+          recurring_frequency: transaction.recurring_frequency,
+          file_id: transaction.file_id,
+          created_at: transaction.created_at,
+          updated_at: transaction.updated_at
         }))
 
         setTransactions(processedTransactions as Transaction[])
@@ -97,27 +109,34 @@ export function useTransactions(dateRange?: DateRange) {
       const optimisticTransaction: Transaction = {
         id: tempId,
         user_id: user.id,
-        date: new Date().toISOString().split('T')[0],
-        amount: 0,
-        name: '',
-        type: 'Expense',
-        account_type: 'Checking',
-        category_id: 0,
-        category_name: 'Uncategorized',
-        ...data
-      } as Transaction
+        date: data.date || new Date().toISOString().split('T')[0],
+        amount: data.amount || 0,
+        name: data.name || '',
+        type: data.type || 'Expense',
+        account_type: data.account_type || 'Checking',
+        category_id: data.category_id || null,
+        category_name: data.category_name || 'Uncategorized',
+        description: data.description || null,
+        recurring_frequency: data.recurring_frequency || null,
+        file_id: data.file_id || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
 
       setTransactions(prev => [optimisticTransaction, ...prev])
 
       const insertData = {
         user_id: user.id,
-        date: data.date instanceof Date ? data.date.toISOString().split('T')[0] : (data.date || new Date().toISOString().split('T')[0]),
+        date: data.date || new Date().toISOString().split('T')[0],
         amount: data.amount || 0,
         name: data.name || '',
         type: data.type || 'Expense',
         account_type: data.account_type || 'Checking',
-        category_id: data.category_id || 0,
+        category_id: data.category_id || null, // Can be null per schema
+        category_name: data.category_name || null, // Denormalized category name
         description: data.description || null,
+        recurring_frequency: data.recurring_frequency || null,
+        file_id: data.file_id || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
@@ -136,12 +155,23 @@ export function useTransactions(dateRange?: DateRange) {
       if (error) throw error
 
       const processedTransaction: Transaction = {
-        ...newTransaction,
+        id: newTransaction.id,
         user_id: newTransaction.user_id || user.id,
-        category_name: (newTransaction as TransactionWithCategory)?.categories?.name || newTransaction.category_name || 'Uncategorized'
-      } as Transaction
+        date: newTransaction.date,
+        amount: newTransaction.amount,
+        name: newTransaction.name,
+        description: newTransaction.description,
+        type: newTransaction.type,
+        account_type: newTransaction.account_type,
+        category_id: newTransaction.category_id,
+        category_name: (newTransaction as TransactionWithCategory)?.categories?.name || newTransaction.category_name || 'Uncategorized',
+        recurring_frequency: newTransaction.recurring_frequency,
+        file_id: newTransaction.file_id,
+        created_at: newTransaction.created_at,
+        updated_at: newTransaction.updated_at
+      }
 
-      setTransactions(prev => 
+      setTransactions(prev =>
         prev.map(t => String(t.id) === tempId ? processedTransaction : t)
       )
 
@@ -168,7 +198,7 @@ export function useTransactions(dateRange?: DateRange) {
       const { id: _id, user_id: _user_id, ...dataWithoutId } = data
       const updateData = {
         ...dataWithoutId,
-        date: data.date instanceof Date ? data.date.toISOString().split('T')[0] : data.date,
+        date: data.date, // date is already a string
         updated_at: new Date().toISOString()
       }
       
@@ -252,7 +282,7 @@ export function useTransactions(dateRange?: DateRange) {
       const { id: _id, user_id: _user_id, ...changesWithoutId } = changes
       const updateData = {
         ...changesWithoutId,
-        date: changes.date instanceof Date ? changes.date.toISOString().split('T')[0] : changes.date,
+        date: changes.date, // date is already a string
         updated_at: new Date().toISOString()
       }
       

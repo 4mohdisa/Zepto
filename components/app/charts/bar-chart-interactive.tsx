@@ -21,7 +21,7 @@ import { format, addDays, startOfDay, endOfDay, eachDayOfInterval } from "date-f
 interface Transaction {
   date: string
   amount: number
-  type: string
+  type: string | null
   category_name?: string | null
   [key: string]: any
 }
@@ -39,7 +39,7 @@ const processChartData = (transactions: Transaction[], metrics: { key: string; l
       dataPoint[metric.key] = 0;
     });
     metrics.forEach(metric => {
-      if (transaction.type.toLowerCase() === metric.key.toLowerCase()) {
+      if (transaction.type?.toLowerCase() === metric.key.toLowerCase()) {
         dataPoint[metric.key] += transaction.amount;
       }
     });

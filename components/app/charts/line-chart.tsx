@@ -22,7 +22,7 @@ import { formatCurrency } from '@/utils/format'
 interface Transaction {
   date: string;
   amount: number;
-  type: string;
+  type: string | null;
   category_name?: string | null;
   [key: string]: any;
 }

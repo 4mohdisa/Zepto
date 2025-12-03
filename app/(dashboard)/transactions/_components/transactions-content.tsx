@@ -14,10 +14,10 @@ interface TransactionsContentProps {
   error: Error | null
   dateRange?: DateRange
   onRefresh: () => void
-  onDelete: (id: number) => Promise<void>
-  onBulkDelete: (ids: number[]) => Promise<void>
-  onEdit: (id: number, data: Partial<UpdateTransaction>) => Promise<void>
-  onBulkEdit: (ids: number[], changes: Partial<UpdateTransaction>) => Promise<void>
+  onDelete: (id: number | string) => Promise<void>
+  onBulkDelete: (ids: (number | string)[]) => Promise<void>
+  onEdit: (id: number | string, data: Partial<UpdateTransaction>) => Promise<void>
+  onBulkEdit: (ids: (number | string)[], changes: Partial<UpdateTransaction>) => Promise<void>
   onDateRangeChange?: (range: DateRange | undefined) => void
   onAddTransaction?: () => void
 }

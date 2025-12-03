@@ -48,14 +48,14 @@ export function useTransactionsActions({
     toast.success('Transaction added successfully')
   }, [refresh])
 
-  const handleDelete = useCallback(async (id: number) => {
+  const handleDelete = useCallback(async (id: number | string) => {
     if (!userId) {
       toast.error('Authentication required')
       return
     }
     try {
       const supabase = createClient()
-      const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', userId)
+      const { error } = await supabase.from('transactions').delete().eq('id', Number(id)).eq('user_id', userId)
       if (error) throw error
       refresh()
       toast.success('Transaction deleted successfully')
@@ -65,14 +65,14 @@ export function useTransactionsActions({
     }
   }, [userId, refresh])
 
-  const handleBulkDelete = useCallback(async (ids: number[]) => {
+  const handleBulkDelete = useCallback(async (ids: (number | string)[]) => {
     if (!userId) {
       toast.error('Authentication required')
       return
     }
     try {
       const supabase = createClient()
-      const { error } = await supabase.from('transactions').delete().in('id', ids).eq('user_id', userId)
+      const { error } = await supabase.from('transactions').delete().in('id', ids.map(id => Number(id))).eq('user_id', userId)
       if (error) throw error
       refresh()
       toast.success('Transactions deleted successfully')
@@ -82,7 +82,7 @@ export function useTransactionsActions({
     }
   }, [userId, refresh])
 
-  const handleEdit = useCallback(async (id: number, formData: Partial<UpdateTransaction>) => {
+  const handleEdit = useCallback(async (id: number | string, formData: Partial<UpdateTransaction>) => {
     if (!userId) {
       toast.error('Authentication required')
       return
@@ -95,10 +95,10 @@ export function useTransactionsActions({
         ...(formData.account_type && { account_type: formData.account_type }),
         ...(formData.category_id && { category_id: formData.category_id }),
         ...(formData.description && { description: formData.description }),
-        ...(formData.date && { date: formData.date instanceof Date ? formData.date.toISOString() : formData.date }),
+        ...(formData.date && { date: formData.date }), // date is already a string
       }
       const supabase = createClient()
-      const { error } = await supabase.from('transactions').update(supabaseData).eq('id', id).eq('user_id', userId)
+      const { error } = await supabase.from('transactions').update(supabaseData).eq('id', Number(id)).eq('user_id', userId)
       if (error) throw error
       refresh()
       toast.success('Transaction updated successfully')
@@ -108,7 +108,7 @@ export function useTransactionsActions({
     }
   }, [userId, refresh])
 
-  const handleBulkEdit = useCallback(async (ids: number[], changes: Partial<UpdateTransaction>) => {
+  const handleBulkEdit = useCallback(async (ids: (number | string)[], changes: Partial<UpdateTransaction>) => {
     if (!userId) {
       toast.error('Authentication required')
       return
@@ -121,10 +121,10 @@ export function useTransactionsActions({
         ...(changes.account_type && { account_type: changes.account_type }),
         ...(changes.category_id && { category_id: changes.category_id }),
         ...(changes.description && { description: changes.description }),
-        ...(changes.date && { date: changes.date instanceof Date ? changes.date.toISOString() : changes.date }),
+        ...(changes.date && { date: changes.date }), // date is already a string
       }
       const supabase = createClient()
-      const { error } = await supabase.from('transactions').update(supabaseData).in('id', ids).eq('user_id', userId)
+      const { error } = await supabase.from('transactions').update(supabaseData).in('id', ids.map(id => Number(id))).eq('user_id', userId)
       if (error) throw error
       refresh()
       toast.success('Transactions updated successfully')

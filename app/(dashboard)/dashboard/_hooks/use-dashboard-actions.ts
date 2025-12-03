@@ -15,10 +15,10 @@ interface User {
 interface UseDashboardActionsProps {
   user: User | null
   refreshTransactions: () => void
-  deleteTransaction: (id: number) => Promise<void>
-  bulkDeleteTransactions: (ids: number[]) => Promise<void>
-  updateTransaction: (id: number, data: Partial<UpdateTransaction>) => Promise<void>
-  bulkUpdateTransactions: (ids: number[], changes: Partial<UpdateTransaction>) => Promise<void>
+  deleteTransaction: (id: number | string) => Promise<void>
+  bulkDeleteTransactions: (ids: (number | string)[]) => Promise<void>
+  updateTransaction: (id: number | string, data: Partial<UpdateTransaction>) => Promise<void>
+  bulkUpdateTransactions: (ids: (number | string)[], changes: Partial<UpdateTransaction>) => Promise<void>
 }
 
 export function useDashboardActions({
@@ -68,7 +68,7 @@ export function useDashboardActions({
     }
   }, [user])
 
-  const handleDeleteTransaction = useCallback(async (id: number) => {
+  const handleDeleteTransaction = useCallback(async (id: number | string) => {
     try {
       await deleteTransaction(id)
     } catch (error) {
@@ -76,7 +76,7 @@ export function useDashboardActions({
     }
   }, [deleteTransaction])
 
-  const handleBulkDelete = useCallback(async (ids: number[]) => {
+  const handleBulkDelete = useCallback(async (ids: (number | string)[]) => {
     try {
       await bulkDeleteTransactions(ids)
     } catch (error) {
@@ -84,25 +84,19 @@ export function useDashboardActions({
     }
   }, [bulkDeleteTransactions])
 
-  const handleEditTransaction = useCallback(async (id: number, formData: Partial<UpdateTransaction>) => {
+  const handleEditTransaction = useCallback(async (id: number | string, formData: Partial<UpdateTransaction>) => {
     try {
-      const formattedData = {
-        ...formData,
-        date: formData.date instanceof Date ? format(formData.date, 'yyyy-MM-dd') : formData.date
-      }
-      await updateTransaction(id, formattedData)
+      // date is already a string in UpdateTransaction type, no need to convert
+      await updateTransaction(id, formData)
     } catch (error) {
       console.error('Error updating transaction:', error)
     }
   }, [updateTransaction])
 
-  const handleBulkEdit = useCallback(async (ids: number[], changes: Partial<UpdateTransaction>) => {
+  const handleBulkEdit = useCallback(async (ids: (number | string)[], changes: Partial<UpdateTransaction>) => {
     try {
-      const formattedChanges = {
-        ...changes,
-        date: changes.date instanceof Date ? format(changes.date, 'yyyy-MM-dd') : changes.date
-      }
-      await bulkUpdateTransactions(ids, formattedChanges)
+      // date is already a string in UpdateTransaction type, no need to convert
+      await bulkUpdateTransactions(ids, changes)
     } catch (error) {
       console.error('Error updating transactions:', error)
     }

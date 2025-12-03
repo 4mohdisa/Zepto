@@ -22,7 +22,7 @@ import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isSame
 interface Transaction {
   date: string;
   amount: number;
-  type: string;
+  type: string | null;
   category_name?: string | null;
   [key: string]: any;
 }

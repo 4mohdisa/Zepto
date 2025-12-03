@@ -111,19 +111,15 @@ class TransactionService {
   async createRecurringTransaction(data: RecurringTransaction | Omit<RecurringTransaction, 'id'>) {
     // Check if this is form data (which won't have user_id) or direct data
     const isFormData = !('user_id' in data);
-    
+
     let userId: string;
     let type = data.type;
     let accountType = data.account_type;
     let frequency = (data as any).frequency || (data as any).schedule_type;
 
     if (isFormData) {
-      // Get the current user
-      const { data: authData } = await this.supabase.auth.getUser();
-      if (!authData?.user?.id) {
-        throw new Error('User authentication required');
-      }
-      userId = authData.user.id;
+      // User ID must be provided - Clerk handles authentication at the component level
+      throw new Error('User ID is required. This method should be called with user_id already set.');
     } else {
       userId = (data as RecurringTransaction).user_id;
     }

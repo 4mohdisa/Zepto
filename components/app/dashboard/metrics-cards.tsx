@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 
 interface Transaction {
   amount: number;
-  type: string;
+  type: string | null;
   category_name?: string | null;
   date?: string | Date;
   [key: string]: any;

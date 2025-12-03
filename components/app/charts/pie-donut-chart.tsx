@@ -21,7 +21,7 @@ import {
 interface Transaction {
   category_name?: string | null;
   amount: number;
-  type: string;
+  type: string | null;
   [key: string]: any;
 }
 

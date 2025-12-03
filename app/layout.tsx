@@ -1,4 +1,5 @@
 import "./globals.css";
+import { ClerkProvider } from '@clerk/nextjs';
 import { AuthProvider } from '@/context/auth-context';
 import { CacheProvider } from '@/context/cache-context';
 import { ErrorBoundaryWrapper } from '@/components/ui/error-boundary';
@@ -23,15 +24,17 @@ export default function RootLayout({
         className="antialiased"
         suppressHydrationWarning
       >
-        <ErrorBoundaryWrapper>
+        <ClerkProvider>
           <AuthProvider>
-            <CacheProvider>
-              <ErrorBoundaryWrapper>
-                {children}
-              </ErrorBoundaryWrapper>
-            </CacheProvider>
+            <ErrorBoundaryWrapper>
+              <CacheProvider>
+                <ErrorBoundaryWrapper>
+                  {children}
+                </ErrorBoundaryWrapper>
+              </CacheProvider>
+            </ErrorBoundaryWrapper>
           </AuthProvider>
-        </ErrorBoundaryWrapper>
+        </ClerkProvider>
       </body>
     </html>
   );
