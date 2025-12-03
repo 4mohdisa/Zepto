@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { createClient } from '@/utils/supabase/client';
+import { useSupabaseClient } from '@/utils/supabase/client';
 
 export interface Category {
   id: number;
@@ -17,10 +17,9 @@ export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const supabase = useSupabaseClient() // Use authenticated client
 
   useEffect(() => {
-    const supabase = createClient()
-
     async function fetchCategories() {
       try {
         setLoading(true)
@@ -45,7 +44,7 @@ export function useCategories() {
     }
 
     fetchCategories()
-  }, [])
+  }, [supabase])
 
   return { categories, loading, error }
 }
