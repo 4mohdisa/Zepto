@@ -1,6 +1,6 @@
 'use client'
 
-import { UpcomingTransactionsTable } from '@/components/app/transactions/upcoming-table'
+import { UpcomingTransactionsTable } from "@/components/app/transactions/upcoming-table"
 
 interface UpcomingTransactionsSectionProps {
   limit?: number
@@ -8,23 +8,13 @@ interface UpcomingTransactionsSectionProps {
 
 export function UpcomingTransactionsSection({ limit = 10 }: UpcomingTransactionsSectionProps) {
   return (
-    <section className="space-y-4 md:space-y-6 w-full">
-      {/* Section Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#635BFF] to-blue-600">
-            Upcoming Transactions
-          </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">
-            Preview of your scheduled transactions
-          </p>
-        </div>
+    <div className="w-full">
+      <div className="mb-4">
+        <h2 className="text-base font-semibold text-gray-900">Upcoming transactions</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Predicted based on your recurring patterns</p>
       </div>
-
-      {/* Upcoming Transactions Table */}
-      <div className="w-full">
-        <UpcomingTransactionsTable limit={limit} />
-      </div>
-    </section>
+      
+      <UpcomingTransactionsTable limit={limit} />
+    </div>
   )
 }

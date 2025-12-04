@@ -12,17 +12,20 @@ import { useDashboardData, useDashboardActions } from './_hooks'
 // Components
 import { PageSkeleton } from "@/components/ui/loading-skeleton"
 import { ErrorBoundaryWrapper } from '@/components/ui/error-boundary'
-import { MetricsCards } from "@/components/app/dashboard/metrics-cards"
 import { BalanceDialog } from "@/components/app/dialogs/balance-dialog"
 import { TransactionDialog } from "@/components/app/transactions/transaction-dialog"
 import { UploadDialog } from "@/components/app/dialogs/upload-dialog"
 
-// Local Components
+// New Components
 import { 
-  DashboardHeader, 
-  DashboardCharts, 
-  RecentTransactions, 
-  EmptyState 
+  WelcomeBanner,
+  StatsOverview, 
+  QuickActions,
+  QuickStats,
+  ChartsGrid, 
+  TransactionsList,
+  SpendingInsights,
+  MonthlyComparison
 } from './_components'
 
 const DEFAULT_DATE_RANGE = {
@@ -96,55 +99,85 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Main Content Container */}
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 lg:py-10 max-w-[1600px]">
-        {/* Header Section */}
-        <DashboardHeader
-          userName={userName}
-          selectedDate={selectedDate}
-          onDateChange={handleDateChange}
+      <div className="container mx-auto px-6 py-8 max-w-[1400px]">
+        {/* Welcome Banner */}
+        <WelcomeBanner userName={userName} />
+
+        {/* Quick Actions */}
+        <QuickActions
           onAddTransaction={openAddTransaction}
           onUploadFile={openUploadFile}
           onAddBalance={openBalanceDialog}
+          selectedDate={selectedDate}
+          onDateChange={handleDateChange}
         />
 
-        {/* Main Content Grid */}
-        <div className="space-y-6 md:space-y-8">
-          {/* KPI Metrics Section */}
-          <section className="w-full">
-            <ErrorBoundaryWrapper>
-              <MetricsCards 
-                transactions={chartTransactions}
-                isLoading={isLoading}
-              />
-            </ErrorBoundaryWrapper>
-          </section>
+        {/* Stats Overview */}
+        <ErrorBoundaryWrapper>
+          <StatsOverview 
+            transactions={chartTransactions}
+            isLoading={isLoading}
+          />
+        </ErrorBoundaryWrapper>
 
-          {/* Charts Section or Empty State */}
-          {hasTransactions ? (
-            <section className="w-full">
-              <DashboardCharts transactions={chartTransactions} />
-            </section>
-          ) : (
-            <section className="w-full">
-              <EmptyState onAddTransaction={openAddTransaction} />
-            </section>
-          )}
+        {/* Quick Stats */}
+        {hasTransactions && (
+          <div className="mb-6">
+            <QuickStats transactions={chartTransactions} />
+          </div>
+        )}
 
-          {/* Recent Transactions Section */}
-          {hasTransactions && (
-            <section className="w-full pb-6">
-              <RecentTransactions
-                transactions={recentTransactions}
-                isLoading={isLoading}
-                onDelete={handleDeleteTransaction}
-                onBulkDelete={handleBulkDelete}
-                onEdit={handleEditTransaction}
-                onBulkEdit={handleBulkEdit}
-              />
-            </section>
-          )}
-        </div>
+        {/* Two Column Layout - Charts and Insights */}
+        {hasTransactions && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* Left: Charts (2 cols) */}
+            <div className="lg:col-span-2 space-y-6">
+              <ChartsGrid transactions={chartTransactions} />
+            </div>
+
+            {/* Right: Insights (1 col) */}
+            <div className="space-y-6">
+              <SpendingInsights transactions={chartTransactions} />
+              <MonthlyComparison transactions={chartTransactions} />
+            </div>
+          </div>
+        )}
+
+        {/* Recent Transactions */}
+        {hasTransactions && (
+          <div className="mb-6">
+            <TransactionsList
+              transactions={recentTransactions}
+              isLoading={isLoading}
+            />
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!hasTransactions && !isLoading && (
+          <div className="flex items-center justify-center py-20">
+            <div className="text-center max-w-md">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">No transactions yet</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Get started by adding your first transaction
+              </p>
+              <button
+                onClick={openAddTransaction}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#635BFF] text-white text-sm font-medium rounded-lg hover:bg-[#5851EA] transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add transaction
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Dialogs */}
@@ -167,4 +200,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-

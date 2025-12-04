@@ -63,21 +63,15 @@ export default function RecurringTransactionsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 lg:py-10 max-w-[1600px]">
+      <div className="container mx-auto px-6 py-8 max-w-[1400px]">
         {/* Page Header */}
-        <div className="mb-6 md:mb-8">
-          <div className="space-y-1">
-            <h1 className="text-3xl sm:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#635BFF] to-blue-600">
-              Recurring Transactions
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Manage your recurring transactions and view upcoming predictions
-            </p>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-gray-900">Recurring Transactions</h1>
+          <p className="text-sm text-gray-600 mt-1">Manage automated payments and subscriptions</p>
         </div>
 
         {/* Content Sections */}
-        <div className="space-y-6 md:space-y-8 w-full">
+        <div className="space-y-6 w-full">
           {/* Recurring Transactions Table */}
           <section className="w-full">
             <RecurringTransactionsTable
@@ -93,7 +87,7 @@ export default function RecurringTransactionsPage() {
           </section>
 
           {/* Upcoming Transactions */}
-          <section className="w-full pb-6">
+          <section className="w-full">
             <UpcomingTransactionsSection limit={10} />
           </section>
         </div>

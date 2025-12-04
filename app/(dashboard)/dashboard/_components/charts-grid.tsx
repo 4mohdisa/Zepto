@@ -1,29 +1,30 @@
-'use client'
+"use client"
 
 import { Suspense, memo } from 'react'
 import dynamic from 'next/dynamic'
-import { ChartSkeleton } from "@/components/ui/loading-skeleton"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ErrorBoundaryWrapper } from '@/components/ui/error-boundary'
 
-// Lazy load chart components for better performance
+// Lazy load chart components
 const SpendingChart = dynamic(
   () => import('@/components/app/charts/bar-chart-multiple').then(mod => ({ default: mod.SpendingChart })),
-  { loading: () => <ChartSkeleton />, ssr: false }
+  { loading: () => <ChartLoadingSkeleton />, ssr: false }
 )
 
 const PieDonutChart = dynamic(
   () => import('@/components/app/charts/pie-donut-chart').then(mod => ({ default: mod.PieDonutChart })),
-  { loading: () => <ChartSkeleton />, ssr: false }
+  { loading: () => <ChartLoadingSkeleton />, ssr: false }
 )
 
 const TransactionChart = dynamic(
   () => import('@/components/app/charts/bar-chart-interactive').then(mod => ({ default: mod.TransactionChart })),
-  { loading: () => <ChartSkeleton />, ssr: false }
+  { loading: () => <ChartLoadingSkeleton />, ssr: false }
 )
 
 const NetBalanceChart = dynamic(
   () => import('@/components/app/charts/line-chart').then(mod => ({ default: mod.NetBalanceChart })),
-  { loading: () => <ChartSkeleton />, ssr: false }
+  { loading: () => <ChartLoadingSkeleton />, ssr: false }
 )
 
 interface ChartTransaction {
@@ -33,11 +34,21 @@ interface ChartTransaction {
   category_name: string | null
 }
 
-interface DashboardChartsProps {
+interface ChartsGridProps {
   transactions: ChartTransaction[]
 }
 
-// Memoize individual chart wrappers to prevent unnecessary re-renders
+function ChartLoadingSkeleton() {
+  return (
+    <div className="w-full h-[300px] flex items-center justify-center">
+      <div className="space-y-3 w-full px-6">
+        <Skeleton className="h-4 w-32 bg-gray-200" />
+        <Skeleton className="h-[250px] w-full bg-gray-200" />
+      </div>
+    </div>
+  )
+}
+
 const MemoizedTransactionChart = memo(function MemoizedTransactionChart({ 
   transactions 
 }: { 
@@ -102,48 +113,42 @@ const MemoizedSpendingChart = memo(function MemoizedSpendingChart({
   )
 })
 
-export function DashboardCharts({ transactions }: DashboardChartsProps) {
+export function ChartsGrid({ transactions }: ChartsGridProps) {
   return (
-    <section className="space-y-6">
-      {/* Primary Charts Row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 md:gap-6">
-        {/* Main Transaction Chart - Takes 2/3 on desktop */}
-        <div className="xl:col-span-2 w-full">
-          <ErrorBoundaryWrapper>
-            <Suspense fallback={<ChartSkeleton />}>
-              <MemoizedTransactionChart transactions={transactions} />
-            </Suspense>
-          </ErrorBoundaryWrapper>
-        </div>
-
-        {/* Category Breakdown - Takes 1/3 on desktop */}
-        <div className="w-full">
-          <ErrorBoundaryWrapper>
-            <Suspense fallback={<ChartSkeleton />}>
-              <MemoizedPieDonutChart transactions={transactions} />
-            </Suspense>
-          </ErrorBoundaryWrapper>
-        </div>
+    <div className="space-y-6">
+      {/* Main Chart - Full Width */}
+      <div className="w-full">
+        <ErrorBoundaryWrapper>
+          <Suspense fallback={<ChartLoadingSkeleton />}>
+            <MemoizedTransactionChart transactions={transactions} />
+          </Suspense>
+        </ErrorBoundaryWrapper>
       </div>
 
-      {/* Secondary Charts Row - Equal width on desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <div className="w-full">
-          <ErrorBoundaryWrapper>
-            <Suspense fallback={<ChartSkeleton />}>
-              <MemoizedNetBalanceChart transactions={transactions} />
-            </Suspense>
-          </ErrorBoundaryWrapper>
-        </div>
+      {/* Two Column Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ErrorBoundaryWrapper>
+          <Suspense fallback={<ChartLoadingSkeleton />}>
+            <MemoizedPieDonutChart transactions={transactions} />
+          </Suspense>
+        </ErrorBoundaryWrapper>
 
-        <div className="w-full">
-          <ErrorBoundaryWrapper>
-            <Suspense fallback={<ChartSkeleton />}>
-              <MemoizedSpendingChart transactions={transactions} />
-            </Suspense>
-          </ErrorBoundaryWrapper>
-        </div>
+        <ErrorBoundaryWrapper>
+          <Suspense fallback={<ChartLoadingSkeleton />}>
+            <MemoizedSpendingChart transactions={transactions} />
+          </Suspense>
+        </ErrorBoundaryWrapper>
       </div>
-    </section>
+
+      {/* Net Balance - Full Width */}
+      <div className="w-full">
+        <ErrorBoundaryWrapper>
+          <Suspense fallback={<ChartLoadingSkeleton />}>
+            <MemoizedNetBalanceChart transactions={transactions} />
+          </Suspense>
+        </ErrorBoundaryWrapper>
+      </div>
+    </div>
   )
 }
+

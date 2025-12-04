@@ -11,21 +11,16 @@ export function AppHeader() {
   const getPageTitle = () => {
     if (pathname === '/dashboard') return 'Dashboard'
     if (pathname === '/transactions') return 'Transactions'
-    if (pathname === '/recurring-transactions') return 'Recurring Transactions'
-    if (pathname === '/categories') return 'Categories'
-    if (pathname === '/settings') return 'Settings'
+    if (pathname === '/recurring-transactions') return 'Recurring'
     return 'Zepto'
   }
   
   return (
-    <header className="flex h-16 shrink-0 items-center gap-2 border-b border-gray-200 bg-white transition-[width,height] ease-linear">
-      <div className="flex w-full items-center gap-2 px-4 lg:gap-2 lg:px-6">
-        <SidebarTrigger className="-ml-1 hover:bg-gray-50 transition-colors" />
-        <Separator
-          orientation="vertical"
-          className="mx-2 h-4 bg-gray-200"
-        />
-        <h1 className="text-lg font-bold text-gray-900">{getPageTitle()}</h1>
+    <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-gray-200 bg-white transition-[width,height] ease-linear">
+      <div className="flex w-full items-center gap-2 px-4">
+        <SidebarTrigger className="hover:bg-gray-100 transition-colors rounded-md -ml-1" />
+        <Separator orientation="vertical" className="h-4 bg-gray-300" />
+        <span className="text-sm font-medium text-gray-700">{getPageTitle()}</span>
       </div>
     </header>
   )

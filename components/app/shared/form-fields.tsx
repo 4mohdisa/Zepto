@@ -70,13 +70,15 @@ export function InputField<T extends FieldValues>({
 
 interface TextareaFieldProps<T extends FieldValues> extends BaseFieldProps<T> {
   placeholder?: string
+  className?: string
 }
 
 export function TextareaField<T extends FieldValues>({
   control,
   name,
   label,
-  placeholder
+  placeholder,
+  className
 }: TextareaFieldProps<T>) {
   return (
     <FormField
@@ -88,7 +90,7 @@ export function TextareaField<T extends FieldValues>({
           <FormControl>
             <Textarea
               placeholder={placeholder}
-              className="resize-none"
+              className={`resize-none ${className || ''}`}
               {...field}
             />
           </FormControl>

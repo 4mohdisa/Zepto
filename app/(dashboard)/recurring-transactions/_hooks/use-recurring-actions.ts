@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react'
-import { RecurringTransaction } from "@/app/types/transaction"
+import { RecurringTransaction, Transaction } from "@/app/types/transaction"
 
 interface UseRecurringActionsProps {
   refresh: () => Promise<void>
@@ -55,17 +55,17 @@ export function useRecurringActions({
     }
   }, [bulkDeleteRecurringTransactions])
 
-  const handleEdit = useCallback(async (id: number | string, formData: Partial<RecurringTransaction>) => {
+  const handleEdit = useCallback(async (id: number | string, formData: Partial<Transaction>) => {
     try {
-      await updateRecurringTransaction(id, formData)
+      await updateRecurringTransaction(id, formData as Partial<RecurringTransaction>)
     } catch (error) {
       console.error('Error updating recurring transaction:', error)
     }
   }, [updateRecurringTransaction])
 
-  const handleBulkEdit = useCallback(async (ids: (number | string)[], changes: Partial<RecurringTransaction>) => {
+  const handleBulkEdit = useCallback(async (ids: (number | string)[], changes: Partial<Transaction>) => {
     try {
-      await bulkUpdateRecurringTransactions(ids, changes)
+      await bulkUpdateRecurringTransactions(ids, changes as Partial<RecurringTransaction>)
     } catch (error) {
       console.error('Error updating recurring transactions:', error)
     }
