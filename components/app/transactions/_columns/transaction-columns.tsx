@@ -124,16 +124,41 @@ const typeColumn: ColumnDef<Transaction> = {
 // Category column
 const categoryColumn: ColumnDef<Transaction> = {
   id: "category",
-  accessorKey: "category_id",
+  accessorKey: "category_name",
   header: "Category",
   cell: ({ row }) => {
-    const categoryId = row.getValue("category_id") as number
+    // Use original data to access both category_name and category_id
+    const categoryId = row.original.category_id
+    const categoryName = row.original.category_name
+    
+    if (categoryName) {
+      return (
+        <Badge 
+          variant="outline" 
+          className="text-xs font-medium rounded-md px-2 py-1 bg-muted/20 text-muted-foreground border-muted"
+        >
+          {categoryName}
+        </Badge>
+      )
+    }
+    
+    if (categoryId) {
+      return (
+        <Badge 
+          variant="outline" 
+          className="text-xs font-medium rounded-md px-2 py-1 bg-muted/20 text-muted-foreground border-muted"
+        >
+          {getCategoryName(categoryId)}
+        </Badge>
+      )
+    }
+    
     return (
       <Badge 
         variant="outline" 
         className="text-xs font-medium rounded-md px-2 py-1 bg-muted/20 text-muted-foreground border-muted"
       >
-        {getCategoryName(categoryId)}
+        Uncategorized
       </Badge>
     )
   },

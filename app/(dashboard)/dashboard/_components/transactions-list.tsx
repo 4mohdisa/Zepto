@@ -25,23 +25,38 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
   const isIncome = transaction.type === 'Income'
   
   return (
-    <div className="flex items-center justify-between py-3 hover:bg-gray-50 -mx-4 px-4 rounded-md transition-colors">
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+    <div className="flex items-center justify-between py-4 hover:bg-gray-50 -mx-4 px-4 rounded-lg transition-colors group">
+      <div className="flex items-center gap-4 flex-1 min-w-0">
+        <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isIncome ? 'bg-green-50' : 'bg-gray-100'}`}>
+          <span className={`text-sm font-semibold ${isIncome ? 'text-green-600' : 'text-gray-600'}`}>
+            {transaction.category_name?.charAt(0) || transaction.name.charAt(0)}
+          </span>
+        </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-900 truncate">{transaction.name}</p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {new Date(transaction.date).toLocaleDateString('en-US', { 
-              month: 'short', 
-              day: 'numeric',
-            })}
-            {transaction.category_name && ` · ${transaction.category_name}`}
-          </p>
+          <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
+            <span>
+              {new Date(transaction.date).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              })}
+            </span>
+            {transaction.category_name && (
+              <>
+                <span>·</span>
+                <Badge variant="secondary" className="text-xs font-normal py-0 px-1.5 bg-gray-100 text-gray-600 border-0">
+                  {transaction.category_name}
+                </Badge>
+              </>
+            )}
+          </div>
         </div>
       </div>
       
       <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-        <span className={`text-sm font-medium tabular-nums ${isIncome ? 'text-green-600' : 'text-gray-900'}`}>
-          {isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}
+        <span className={`text-sm font-semibold tabular-nums ${isIncome ? 'text-green-600' : 'text-gray-900'}`}>
+          {isIncome ? '+' : '−'}{formatCurrency(transaction.amount)}
         </span>
       </div>
     </div>
@@ -66,14 +81,14 @@ export function TransactionsList({ transactions, isLoading }: TransactionsListPr
   const displayTransactions = transactions.slice(0, 6)
   
   return (
-    <div className="bg-white border border-gray-200 rounded-lg">
-      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-900">Recent activity</h2>
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+      <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
+        <h2 className="text-base font-semibold text-gray-900">Recent Activity</h2>
         <Button 
           variant="ghost" 
           size="sm" 
           asChild
-          className="text-gray-600 hover:text-gray-900 hover:bg-transparent -mr-2"
+          className="text-[#635BFF] hover:text-[#5851EA] hover:bg-[#635BFF]/5 -mr-2"
         >
           <Link href="/transactions" className="flex items-center gap-1 text-xs font-medium">
             View all
@@ -81,7 +96,7 @@ export function TransactionsList({ transactions, isLoading }: TransactionsListPr
           </Link>
         </Button>
       </div>
-      <div className="px-6 py-2">
+      <div className="px-6 py-3">
         {isLoading ? (
           <div className="space-y-1">
             {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -89,7 +104,7 @@ export function TransactionsList({ transactions, isLoading }: TransactionsListPr
             ))}
           </div>
         ) : displayTransactions.length > 0 ? (
-          <div className="divide-y divide-gray-100">
+          <div className="space-y-1">
             {displayTransactions.map((transaction) => (
               <TransactionRow key={transaction.id} transaction={transaction} />
             ))}

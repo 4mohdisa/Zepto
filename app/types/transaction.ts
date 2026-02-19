@@ -9,12 +9,11 @@ export interface Transaction {
   amount: number;
   name: string;
   description?: string | null;
-  type: string | null; // Matches DB schema (string | null)
+  type: string; // 'Income' or 'Expense' - NOT NULL in DB
   account_type: string | null; // Matches DB schema
   category_id: number | null; // Foreign key, can be null
   category_name?: string | null; // Denormalized or from join
   recurring_frequency?: string | null;
-  file_id?: number | null;
   created_at?: string | null;
   updated_at?: string | null;
   // These fields are not in transactions table but used in app

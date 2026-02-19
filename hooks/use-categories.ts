@@ -4,7 +4,7 @@ import { useSupabaseClient } from '@/utils/supabase/client';
 export interface Category {
   id: number;
   name: string;
-  user_id?: string | number | null; // Support string, number, and null for compatibility
+  user_id?: string | number | null;
   icon?: string | null;
   color?: string | null;
   created_at?: string | null;
@@ -13,6 +13,12 @@ export interface Category {
   is_default?: boolean | null;
 }
 
+/**
+ * useCategories Hook
+ * 
+ * Fetches categories from Supabase with Clerk authentication.
+ * Includes default categories (is_default = true) and user-specific categories.
+ */
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,7 +29,6 @@ export function useCategories() {
     async function fetchCategories() {
       try {
         setLoading(true)
-        console.log('🔍 Fetching categories...')
 
         // Fetch all categories (default categories + user-specific categories)
         // RLS policies will handle filtering based on Clerk JWT token
@@ -32,17 +37,14 @@ export function useCategories() {
           .select('*')
           .order('name', { ascending: true })
 
-        console.log('📊 Categories response:', { data, error })
-        console.log('📊 Data type:', typeof data, 'Is array:', Array.isArray(data))
-        console.log('📊 Data contents:', JSON.stringify(data))
+        if (error) {
+          console.error('Error fetching categories:', error)
+          throw error
+        }
 
-        if (error) throw error
-
-        console.log('✅ Categories loaded:', data?.length || 0)
-        console.log('✅ Setting categories state with:', data)
         setCategories(data || [])
       } catch (err) {
-        console.error('❌ Error fetching categories:', err)
+        console.error('Error fetching categories:', err)
         setError(err instanceof Error ? err : new Error('Failed to fetch categories'))
         setCategories([])
       } finally {

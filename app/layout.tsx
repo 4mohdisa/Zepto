@@ -3,6 +3,8 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { AuthProvider } from '@/context/auth-context';
 import { CacheProvider } from '@/context/cache-context';
 import { ErrorBoundaryWrapper } from '@/components/ui/error-boundary';
+import { DebugProvider, AnalyticsProvider } from '@/components/debug';
+import { DebugPanelWrapper } from '@/components/debug/debug-panel-wrapper';
 
 export default function RootLayout({
   children,
@@ -26,13 +28,18 @@ export default function RootLayout({
       >
         <ClerkProvider>
           <AuthProvider>
-            <ErrorBoundaryWrapper>
-              <CacheProvider>
+            <DebugProvider>
+              <AnalyticsProvider>
                 <ErrorBoundaryWrapper>
-                  {children}
+                  <CacheProvider>
+                    <ErrorBoundaryWrapper>
+                      {children}
+                    </ErrorBoundaryWrapper>
+                  </CacheProvider>
                 </ErrorBoundaryWrapper>
-              </CacheProvider>
-            </ErrorBoundaryWrapper>
+                <DebugPanelWrapper />
+              </AnalyticsProvider>
+            </DebugProvider>
           </AuthProvider>
         </ClerkProvider>
       </body>

@@ -51,27 +51,30 @@ export function SpendingInsights({ transactions = [] }: SpendingInsightsProps) {
   }
 
   return (
-    <Card className="border-gray-200">
-      <CardHeader className="pb-3">
+    <Card className="border-gray-200 shadow-sm">
+      <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-gray-900">Top spending categories</CardTitle>
-          <TrendingDown className="h-4 w-4 text-gray-400" />
+          <CardTitle className="text-base font-semibold text-gray-900">Top Spending</CardTitle>
+          <div className="p-1.5 rounded-md bg-red-50">
+            <TrendingDown className="h-4 w-4 text-red-600" />
+          </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {insights.map((insight) => (
-            <div key={insight.category} className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
+            <div key={insight.category} className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
                 <span className="font-medium text-gray-700">{insight.category}</span>
                 <span className="font-semibold text-gray-900 tabular-nums">{formatCurrency(insight.amount)}</span>
               </div>
-              <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-[#635BFF] rounded-full transition-all"
+                  className="h-full bg-gradient-to-r from-[#635BFF] to-[#8B85FF] rounded-full transition-all duration-500"
                   style={{ width: `${insight.percentage}%` }}
                 />
               </div>
+              <div className="text-xs text-gray-500 text-right">{insight.percentage.toFixed(1)}%</div>
             </div>
           ))}
         </div>

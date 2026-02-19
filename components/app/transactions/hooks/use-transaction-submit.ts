@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
-import { transactionService } from '@/app/services/transaction-services'
+import { Transaction } from '@/app/types/transaction'
 import { TransactionFormValues } from '../../shared/transaction-schema'
 import { TransactionType } from '@/data/transactiontypes'
 import { FrequencyType, frequencies } from '@/data/frequencies'
@@ -19,6 +19,8 @@ interface UseTransactionSubmitProps {
   mode: 'create' | 'edit'
   onSuccess: () => void
   onSubmitCallback?: (data: TransactionFormValues) => void
+  createTransaction?: (data: Partial<Transaction>) => Promise<Transaction>
+  updateTransaction?: (id: number | string, data: Partial<Transaction>) => Promise<void>
 }
 
 export function useTransactionSubmit({
@@ -28,7 +30,9 @@ export function useTransactionSubmit({
   categoriesError,
   mode,
   onSuccess,
-  onSubmitCallback
+  onSubmitCallback,
+  createTransaction,
+  updateTransaction
 }: UseTransactionSubmitProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -62,59 +66,34 @@ export function useTransactionSubmit({
       let result: { transaction?: unknown; recurringTransaction?: unknown; success?: boolean } = {}
       
       if (mode === 'edit') {
+        // TODO: Implement edit mode using updateTransaction
         result = { success: true }
       } else if (data.recurring_frequency !== 'Never') {
-        // Create both transaction and recurring transaction
-        const transactionData = {
-          name: data.name,
-          amount: data.amount,
-          type: data.type as TransactionType,
-          account_type: data.account_type as AccountType,
-          category_id: categoryId,
-          description: data.description,
-          date: data.date.toISOString(),
-          created_at: now,
-          updated_at: now,
-          user_id: userId,
-          recurring_frequency: data.recurring_frequency as FrequencyType
-        }
-        
-        const { transaction } = await transactionService.createTransaction(transactionData)
-        
-        const recurringData = {
-          user_id: userId,
-          name: data.name,
-          amount: data.amount,
-          type: data.type as TransactionType,
-          account_type: data.account_type as AccountType,
-          category_id: categoryId,
-          description: data.description,
-          frequency: data.recurring_frequency as FrequencyType,
-          start_date: data.date.toISOString(),
-          end_date: null,
-          created_at: now,
-          updated_at: now
-        }
-        
-        const recurringTransaction = await transactionService.createRecurringTransaction(recurringData)
-        result = { transaction, recurringTransaction }
+        // TODO: Implement recurring transaction creation using createRecurringTransaction hook
+        toast.error('Recurring transactions not yet supported', {
+          description: 'Please use recurring transactions page to create recurring transactions'
+        })
+        throw new Error('Recurring transactions not yet supported')
       } else {
-        // One-time transaction
-        const transactionData = {
+        // One-time transaction - use authenticated createTransaction function
+        if (!createTransaction) {
+          throw new Error('Create transaction function not provided')
+        }
+
+        const transactionData: Partial<Transaction> = {
+          user_id: userId,
           name: data.name,
           amount: data.amount,
           type: data.type as TransactionType,
           account_type: data.account_type as AccountType,
           category_id: categoryId,
           description: data.description,
-          date: data.date.toISOString(),
-          created_at: now,
-          updated_at: now,
-          user_id: userId,
+          date: data.date.toISOString().split('T')[0], // YYYY-MM-DD format
           recurring_frequency: 'Never' as FrequencyType
         }
-        
-        result = await transactionService.createTransaction(transactionData)
+
+        const transaction = await createTransaction(transactionData)
+        result = { transaction }
       }
 
       if (result.transaction) {

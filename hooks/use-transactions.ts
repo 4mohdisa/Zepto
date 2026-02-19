@@ -1,39 +1,58 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@/utils/supabase/client'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSupabaseClient } from '@/utils/supabase/client'
 import { Transaction } from '@/app/types/transaction'
 import { DateRange } from 'react-day-picker'
 import { useAuth } from '@/context/auth-context'
-import { RealtimeChannel } from '@supabase/supabase-js'
 import { toast } from 'sonner'
+import { createTransactionService } from '@/app/services/transaction-services'
 
 interface TransactionWithCategory extends Transaction {
   categories?: { name: string } | null
 }
 
+/**
+ * useTransactions Hook
+ * 
+ * Manages transaction data with optimistic updates and real-time sync.
+ * Uses Clerk-authenticated Supabase client for all database operations.
+ */
 export function useTransactions(dateRange?: DateRange) {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const { user } = useAuth()
-  const supabase = createClient()
+  const supabase = useSupabaseClient()
+  
+  // Create transaction service with authenticated client
+  const transactionService = createTransactionService(supabase)
 
-  // Function to manually trigger a refresh - memoized to prevent infinite loops
+  // Use refs to avoid dependency issues
+  const userRef = useRef(user)
+  userRef.current = user
+  const supabaseRef = useRef(supabase)
+  supabaseRef.current = supabase
+  const transactionServiceRef = useRef(transactionService)
+  transactionServiceRef.current = transactionService
+  const dateRangeRef = useRef(dateRange)
+  dateRangeRef.current = dateRange
+
+  // Function to manually trigger a refresh
   const refresh = useCallback(() => {
     setRefreshTrigger(prev => prev + 1)
   }, [])
 
   // Fetch transactions when component mounts or when dependencies change
   useEffect(() => {
-    let subscription: RealtimeChannel | null = null
-
     async function fetchTransactions() {
-      if (!user?.id) return
+      const currentUser = userRef.current
+      if (!currentUser?.id) return
 
       try {
-        let query = supabase
+        setLoading(true)
+        let query = supabaseRef.current
           .from('transactions')
           .select(`
             *,
@@ -41,14 +60,15 @@ export function useTransactions(dateRange?: DateRange) {
               name
             )
           `)
-          .eq('user_id', user.id)
+          .eq('user_id', currentUser.id)
           .order('date', { ascending: false })
 
-        if (dateRange?.from) {
-          query = query.gte('date', dateRange.from.toISOString().split('T')[0])
+        const currentDateRange = dateRangeRef.current
+        if (currentDateRange?.from) {
+          query = query.gte('date', currentDateRange.from.toISOString().split('T')[0])
         }
-        if (dateRange?.to) {
-          query = query.lte('date', dateRange.to.toISOString().split('T')[0])
+        if (currentDateRange?.to) {
+          query = query.lte('date', currentDateRange.to.toISOString().split('T')[0])
         }
 
         const { data, error } = await query as { data: TransactionWithCategory[] | null, error: unknown }
@@ -57,7 +77,7 @@ export function useTransactions(dateRange?: DateRange) {
 
         const processedTransactions = (data || []).map(transaction => ({
           id: transaction.id,
-          user_id: transaction.user_id || user.id,
+          user_id: transaction.user_id || currentUser.id,
           date: transaction.date,
           amount: transaction.amount,
           name: transaction.name,
@@ -67,7 +87,6 @@ export function useTransactions(dateRange?: DateRange) {
           category_id: transaction.category_id,
           category_name: transaction.categories?.name || transaction.category_name || 'Uncategorized',
           recurring_frequency: transaction.recurring_frequency,
-          file_id: transaction.file_id,
           created_at: transaction.created_at,
           updated_at: transaction.updated_at
         }))
@@ -90,25 +109,22 @@ export function useTransactions(dateRange?: DateRange) {
       
       return () => clearInterval(pollingInterval)
     }
-
-    return () => {
-      if (subscription) {
-        supabase.removeChannel(subscription)
-      }
-    }
-  }, [supabase, user?.id, dateRange?.from, dateRange?.to, refresh, refreshTrigger])
+  // Only depend on user?.id and refreshTrigger, not the callback
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, refreshTrigger])
 
   // CRUD operations with optimistic updates
   const createTransaction = useCallback(async (data: Partial<Transaction>) => {
-    if (!user?.id) throw new Error('User not authenticated')
+    const currentUser = userRef.current
+    if (!currentUser?.id) throw new Error('User not authenticated')
 
     const tempId = `temp-${Date.now()}`
-    
+
     try {
       // Optimistic update - add transaction immediately
       const optimisticTransaction: Transaction = {
         id: tempId,
-        user_id: user.id,
+        user_id: currentUser.id,
         date: data.date || new Date().toISOString().split('T')[0],
         amount: data.amount || 0,
         name: data.name || '',
@@ -118,45 +134,31 @@ export function useTransactions(dateRange?: DateRange) {
         category_name: data.category_name || 'Uncategorized',
         description: data.description || null,
         recurring_frequency: data.recurring_frequency || null,
-        file_id: data.file_id || null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
 
       setTransactions(prev => [optimisticTransaction, ...prev])
 
-      const insertData = {
-        user_id: user.id,
+      // Use the transaction service with authenticated client
+      const result = await transactionServiceRef.current.createTransaction({
+        user_id: currentUser.id,
         date: data.date || new Date().toISOString().split('T')[0],
         amount: data.amount || 0,
         name: data.name || '',
         type: data.type || 'Expense',
         account_type: data.account_type || 'Checking',
-        category_id: data.category_id || null, // Can be null per schema
-        category_name: data.category_name || null, // Denormalized category name
+        category_id: data.category_id || null,
+        category_name: data.category_name || null,
         description: data.description || null,
-        recurring_frequency: data.recurring_frequency || null,
-        file_id: data.file_id || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
+        recurring_frequency: data.recurring_frequency || null
+      } as any)
 
-      const { error, data: newTransaction } = await supabase
-        .from('transactions')
-        .insert(insertData)
-        .select(`
-          *,
-          categories (
-            name
-          )
-        `)
-        .single()
-
-      if (error) throw error
+      const newTransaction = result.transaction
 
       const processedTransaction: Transaction = {
         id: newTransaction.id,
-        user_id: newTransaction.user_id || user.id,
+        user_id: newTransaction.user_id || currentUser.id,
         date: newTransaction.date,
         amount: newTransaction.amount,
         name: newTransaction.name,
@@ -164,9 +166,8 @@ export function useTransactions(dateRange?: DateRange) {
         type: newTransaction.type,
         account_type: newTransaction.account_type,
         category_id: newTransaction.category_id,
-        category_name: (newTransaction as TransactionWithCategory)?.categories?.name || newTransaction.category_name || 'Uncategorized',
+        category_name: data.category_name || 'Uncategorized',
         recurring_frequency: newTransaction.recurring_frequency,
-        file_id: newTransaction.file_id,
         created_at: newTransaction.created_at,
         updated_at: newTransaction.updated_at
       }
@@ -175,6 +176,9 @@ export function useTransactions(dateRange?: DateRange) {
         prev.map(t => String(t.id) === tempId ? processedTransaction : t)
       )
 
+      // Refresh to ensure all data is in sync
+      refresh()
+      
       toast.success('Transaction created successfully')
       return processedTransaction
     } catch (err) {
@@ -184,10 +188,11 @@ export function useTransactions(dateRange?: DateRange) {
       toast.error('Failed to create transaction')
       throw err
     }
-  }, [user?.id, supabase])
+  }, [])
 
   const updateTransaction = useCallback(async (id: number | string, data: Partial<Transaction>) => {
-    if (!user?.id) throw new Error('User not authenticated')
+    const currentUser = userRef.current
+    if (!currentUser?.id) throw new Error('User not authenticated')
 
     try {
       // Optimistic update
@@ -195,20 +200,9 @@ export function useTransactions(dateRange?: DateRange) {
         prev.map(t => t.id === id ? { ...t, ...data } : t)
       )
 
-      const { id: _id, user_id: _user_id, ...dataWithoutId } = data
-      const updateData = {
-        ...dataWithoutId,
-        date: data.date, // date is already a string
-        updated_at: new Date().toISOString()
-      }
-      
-      const { error } = await supabase
-        .from('transactions')
-        .update(updateData)
-        .eq('id', Number(id))
-        .eq('user_id', user.id)
-
-      if (error) throw error
+      // Remove user_id from data before sending to update
+      const { user_id, ...updateData } = data
+      await transactionServiceRef.current.updateTransaction(Number(id), updateData)
 
       toast.success('Transaction updated successfully')
       // Refresh to get the latest data with category names
@@ -220,22 +214,18 @@ export function useTransactions(dateRange?: DateRange) {
       refresh()
       throw err
     }
-  }, [user?.id, supabase, refresh])
+  }, [refresh])
 
   const deleteTransaction = useCallback(async (id: number | string) => {
-    if (!user?.id) throw new Error('User not authenticated')
+    const currentUser = userRef.current
+    if (!currentUser?.id) throw new Error('User not authenticated')
 
     try {
       setTransactions(prev => prev.filter(t => t.id !== id))
 
-      const { error } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('id', Number(id))
-        .eq('user_id', user.id)
+      await transactionServiceRef.current.deleteTransaction(Number(id), currentUser.id)
 
-      if (error) throw error
-
+      refresh()
       toast.success('Transaction deleted successfully')
     } catch (err) {
       console.error('Error deleting transaction:', err)
@@ -244,22 +234,24 @@ export function useTransactions(dateRange?: DateRange) {
       refresh()
       throw err
     }
-  }, [user?.id, supabase, refresh])
+  }, [refresh])
 
   const bulkDeleteTransactions = useCallback(async (ids: (number | string)[]) => {
-    if (!user?.id) throw new Error('User not authenticated')
+    const currentUser = userRef.current
+    if (!currentUser?.id) throw new Error('User not authenticated')
 
     try {
       setTransactions(prev => prev.filter(t => !t.id || !ids.includes(t.id)))
 
-      const { error } = await supabase
+      const { error } = await supabaseRef.current
         .from('transactions')
         .delete()
         .in('id', ids.map(id => Number(id)))
-        .eq('user_id', user.id)
+        .eq('user_id', currentUser.id)
 
       if (error) throw error
 
+      refresh()
       toast.success('Transactions deleted successfully')
     } catch (err) {
       console.error('Error deleting transactions:', err)
@@ -268,10 +260,11 @@ export function useTransactions(dateRange?: DateRange) {
       refresh()
       throw err
     }
-  }, [user?.id, supabase, refresh])
+  }, [refresh])
 
   const bulkUpdateTransactions = useCallback(async (ids: (number | string)[], changes: Partial<Transaction>) => {
-    if (!user?.id) throw new Error('User not authenticated')
+    const currentUser = userRef.current
+    if (!currentUser?.id) throw new Error('User not authenticated')
 
     try {
       // Optimistic update
@@ -282,15 +275,15 @@ export function useTransactions(dateRange?: DateRange) {
       const { id: _id, user_id: _user_id, ...changesWithoutId } = changes
       const updateData = {
         ...changesWithoutId,
-        date: changes.date, // date is already a string
+        date: changes.date,
         updated_at: new Date().toISOString()
       }
       
-      const { error } = await supabase
+      const { error } = await supabaseRef.current
         .from('transactions')
         .update(updateData)
         .in('id', ids.map(id => Number(id)))
-        .eq('user_id', user.id)
+        .eq('user_id', currentUser.id)
 
       if (error) throw error
 
@@ -304,7 +297,7 @@ export function useTransactions(dateRange?: DateRange) {
       refresh()
       throw err
     }
-  }, [user?.id, supabase, refresh])
+  }, [refresh])
 
   return { 
     transactions, 

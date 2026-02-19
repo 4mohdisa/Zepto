@@ -74,17 +74,19 @@ export function QuickStats({ transactions = [] }: QuickStatsProps) {
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {quickStats.map((stat) => {
         const Icon = stat.icon
         return (
-          <Card key={stat.label} className="border-gray-200">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-gray-600">{stat.label}</span>
-                <Icon className={`h-4 w-4 ${stat.color}`} />
+          <Card key={stat.label} className="border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{stat.label}</span>
+                <div className={`p-1.5 rounded-md bg-opacity-10 ${stat.color.replace('text-', 'bg-')}`}>
+                  <Icon className={`h-4 w-4 ${stat.color}`} />
+                </div>
               </div>
-              <div className="text-xl font-semibold text-gray-900 tabular-nums">{stat.value}</div>
+              <div className="text-xl sm:text-2xl font-semibold text-gray-900 tabular-nums">{stat.value}</div>
             </CardContent>
           </Card>
         )

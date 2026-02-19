@@ -190,12 +190,12 @@ export function useTransactionsTable({
     }
   }, [editingTransaction, onEdit, closeRecurringDialog])
 
-  // Memoized columns
+  // Memoized columns - use stable references to prevent unnecessary re-renders
   const columns = useMemo(() => createTransactionColumns({
     type,
     onEdit: handleEditTransaction,
     onDelete: openDeleteDialog,
-  }), [type, handleEditTransaction, openDeleteDialog])
+  }), [type])
 
   // Table instance
   const table = useReactTable({
@@ -230,18 +230,15 @@ export function useTransactionsTable({
     },
   })
 
-  // Get selected transaction IDs - defined after table is created
+  // Get selected transaction IDs from the table's current row model
+  // Use a ref-like pattern to avoid stale closures during render
   const getSelectedTransactionIds = useCallback((): number[] => {
-    const selectedRowIndices = Object.keys(rowSelection)
-    if (selectedRowIndices.length === 0) return []
-    
-    return selectedRowIndices
-      .map(index => {
-        const row = table.getRowModel().rows[Number(index)]
-        return row?.original?.id
-      })
-      .filter((id): id is number => id !== undefined)
-  }, [rowSelection, table])
+    // Get selected rows from table's current state
+    const selectedRows = table.getSelectedRowModel().rows
+    return selectedRows
+      .map(row => row.original.id)
+      .filter((id): id is number => typeof id === 'number')
+  }, [table])
 
   // Open bulk delete dialog
   const openBulkDeleteDialog = useCallback(() => {

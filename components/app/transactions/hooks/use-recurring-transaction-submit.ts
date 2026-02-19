@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
-import { transactionService } from '@/app/services/transaction-services'
 import { RecurringTransactionFormValues } from '../../shared/transaction-schema'
+import { RecurringTransaction } from '@/app/types/transaction'
 
 interface UseRecurringTransactionSubmitProps {
   userId: string | undefined
@@ -10,6 +10,8 @@ interface UseRecurringTransactionSubmitProps {
   onSuccess: () => void
   onSubmitCallback?: (data: RecurringTransactionFormValues) => void
   onRefresh?: () => void
+  createRecurringTransaction?: (data: Partial<RecurringTransaction>) => Promise<RecurringTransaction>
+  updateRecurringTransaction?: (id: number | string, data: Partial<RecurringTransaction>) => Promise<void>
 }
 
 export function useRecurringTransactionSubmit({
@@ -18,7 +20,9 @@ export function useRecurringTransactionSubmit({
   initialDataId,
   onSuccess,
   onSubmitCallback,
-  onRefresh
+  onRefresh,
+  createRecurringTransaction,
+  updateRecurringTransaction
 }: UseRecurringTransactionSubmitProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -47,9 +51,15 @@ export function useRecurringTransactionSubmit({
       }
 
       if (mode === 'create') {
-        await transactionService.createRecurringTransaction(submissionData)
+        if (!createRecurringTransaction) {
+          throw new Error('Create recurring transaction function not provided')
+        }
+        await createRecurringTransaction(submissionData)
       } else if (mode === 'edit' && initialDataId) {
-        await transactionService.updateRecurringTransaction(initialDataId, submissionData, userId)
+        if (!updateRecurringTransaction) {
+          throw new Error('Update recurring transaction function not provided')
+        }
+        await updateRecurringTransaction(initialDataId, submissionData)
       } else if (onSubmitCallback) {
         await onSubmitCallback(data)
       }

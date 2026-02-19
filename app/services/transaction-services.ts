@@ -1,4 +1,3 @@
-import { createClient } from '@/utils/supabase/client'
 import { 
   Transaction, 
   RecurringTransaction, 
@@ -21,14 +20,33 @@ import {
   buildPredictedTransaction,
   validateTransactionInput,
 } from './transaction-builders'
+import { SupabaseClient } from '@supabase/supabase-js'
 
 interface TransactionData extends Omit<Transaction, "id" | "date" | "end_date"> {
   date: string
   end_date?: string | null
 }
 
+/**
+ * TransactionService - Handles all transaction-related database operations
+ * 
+ * IMPORTANT: This service requires an authenticated Supabase client.
+ * You MUST pass a client created with useSupabaseClient() hook which
+ * includes the Clerk JWT token for RLS policies to work.
+ * 
+ * Example usage:
+ * ```typescript
+ * const supabase = useSupabaseClient() // Hook with Clerk auth
+ * const service = createTransactionService(supabase)
+ * const result = await service.createTransaction(data)
+ * ```
+ */
 class TransactionService {
-  private supabase = createClient()
+  private supabase: SupabaseClient
+
+  constructor(supabaseClient: SupabaseClient) {
+    this.supabase = supabaseClient
+  }
 
   async createTransaction(data: TransactionData) {
     // Validate required fields for all transactions
@@ -61,7 +79,12 @@ class TransactionService {
       const { data: transaction, error: transactionError } = await this.supabase
         .from("transactions")
         .insert(transactionData)
-        .select()
+        .select(`
+          *,
+          categories (
+            name
+          )
+        `)
         .single();
 
       if (transactionError) {
@@ -430,9 +453,24 @@ class TransactionService {
   }
 }
 
-// Create a singleton instance of the service
-const transactionService = new TransactionService();
+/**
+ * Factory function to create a TransactionService instance
+ * 
+ * Usage:
+ * ```typescript
+ * const supabase = useSupabaseClient() // From '@utils/supabase/client'
+ * const service = createTransactionService(supabase)
+ * ```
+ */
+export const createTransactionService = (supabaseClient: SupabaseClient) => {
+  return new TransactionService(supabaseClient);
+}
 
-// Export as both default and named export to maintain backward compatibility
+/**
+ * @deprecated Use createTransactionService with authenticated client instead
+ * This singleton uses an unauthenticated client and will fail with RLS policies
+ */
+const transactionService = null;
+
 export { transactionService };
-export default transactionService;
+export default TransactionService;

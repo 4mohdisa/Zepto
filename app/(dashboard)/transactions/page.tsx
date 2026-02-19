@@ -26,7 +26,14 @@ export default function TransactionsPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(DEFAULT_DATE_RANGE)
   
   // Fetch transactions
-  const { transactions: transactionsList, loading, error, refresh } = useTransactions(dateRange)
+  const {
+    transactions: transactionsList,
+    loading,
+    error,
+    refresh,
+    createTransaction,
+    updateTransaction
+  } = useTransactions(dateRange)
 
   // Dialog handlers
   const openAddDialog = useCallback(() => setIsAddTransactionOpen(true), [])
@@ -80,6 +87,8 @@ export default function TransactionsPage() {
           onClose={closeAddDialog}
           onSubmit={onAddSuccess}
           mode="create"
+          createTransaction={createTransaction}
+          updateTransaction={updateTransaction}
         />
       )}
     </div>

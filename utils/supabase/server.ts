@@ -3,7 +3,10 @@ import { auth } from '@clerk/nextjs/server'
 
 /**
  * Creates a Supabase client for Server Components and Server Actions
- * Integrates with Clerk authentication using JWT tokens
+ * Integrates with Clerk authentication using the modern accessToken approach
+ * 
+ * CRITICAL: Uses Clerk session tokens directly - no JWT template needed
+ * Requires Supabase Third-Party Auth to be configured with Clerk
  *
  * @example
  * ```tsx
@@ -24,20 +27,14 @@ export async function createClient() {
     throw new Error('Missing Supabase environment variables')
   }
 
-  // Get Clerk token
+  // Get Clerk token (no template needed for modern Third-Party Auth)
   const authObj = await auth()
-  const token = await authObj.getToken({ template: 'supabase' })
+  const token = await authObj.getToken()
 
   return createSupabaseClient(supabaseUrl, supabaseKey, {
-    global: {
-      headers: token
-        ? {
-            Authorization: `Bearer ${token}`,
-          }
-        : {},
-    },
+    accessToken: async () => token ?? null,
     auth: {
-      persistSession: false, // Don't persist Supabase sessions, use Clerk instead
+      persistSession: false, // Clerk manages sessions
       autoRefreshToken: false, // Clerk handles token refresh
       detectSessionInUrl: false,
     },
@@ -45,50 +42,8 @@ export async function createClient() {
 }
 
 /**
- * Creates a Supabase client for use in Server Components and Server Actions
- * This matches the Clerk documentation recommended pattern with accessToken callback
- *
- * @example
- * ```tsx
- * import { createServerSupabaseClient } from '@/utils/supabase/server'
- *
- * export default function Page() {
- *   const supabase = createServerSupabaseClient()
- *   const { data } = await supabase.from('tasks').select()
- *   return <div>{data}</div>
- * }
- * ```
+ * @deprecated Use createClient() instead which uses the modern accessToken approach
  */
 export function createServerSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase environment variables')
-  }
-
-  return createSupabaseClient(supabaseUrl, supabaseKey, {
-    global: {
-      // Use fetch to get token dynamically for each request
-      fetch: async (url, options = {}) => {
-        const authObj = await auth()
-        const clerkToken = await authObj.getToken({ template: 'supabase' })
-
-        const headers = new Headers(options?.headers)
-        if (clerkToken) {
-          headers.set('Authorization', `Bearer ${clerkToken}`)
-        }
-
-        return fetch(url, {
-          ...options,
-          headers,
-        })
-      },
-    },
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  })
+  throw new Error('createServerSupabaseClient is deprecated. Use createClient() instead.')
 }

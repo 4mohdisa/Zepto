@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
-import { createClient } from '@/utils/supabase/client'
+import { useSupabaseClient } from '@/utils/supabase/client'
 import { UpdateTransaction } from '@/app/types/transaction'
 import { DateRange } from "react-day-picker"
 
@@ -17,6 +17,7 @@ export function useTransactionsActions({
   onOpenAddDialog,
   setDateRange
 }: UseTransactionsActionsProps) {
+  const supabase = useSupabaseClient()
   // Header event listeners
   useEffect(() => {
     const handleDateRangeChange = (event: CustomEvent) => {
@@ -54,7 +55,6 @@ export function useTransactionsActions({
       return
     }
     try {
-      const supabase = createClient()
       const { error } = await supabase.from('transactions').delete().eq('id', Number(id)).eq('user_id', userId)
       if (error) throw error
       refresh()
@@ -63,7 +63,7 @@ export function useTransactionsActions({
       console.error('Error deleting transaction:', error)
       toast.error('Failed to delete transaction')
     }
-  }, [userId, refresh])
+  }, [userId, refresh, supabase])
 
   const handleBulkDelete = useCallback(async (ids: (number | string)[]) => {
     if (!userId) {
@@ -71,7 +71,6 @@ export function useTransactionsActions({
       return
     }
     try {
-      const supabase = createClient()
       const { error } = await supabase.from('transactions').delete().in('id', ids.map(id => Number(id))).eq('user_id', userId)
       if (error) throw error
       refresh()
@@ -80,7 +79,7 @@ export function useTransactionsActions({
       console.error('Error deleting transactions:', error)
       toast.error('Failed to delete transactions')
     }
-  }, [userId, refresh])
+  }, [userId, refresh, supabase])
 
   const handleEdit = useCallback(async (id: number | string, formData: Partial<UpdateTransaction>) => {
     if (!userId) {
@@ -97,7 +96,6 @@ export function useTransactionsActions({
         ...(formData.description && { description: formData.description }),
         ...(formData.date && { date: formData.date }), // date is already a string
       }
-      const supabase = createClient()
       const { error } = await supabase.from('transactions').update(supabaseData).eq('id', Number(id)).eq('user_id', userId)
       if (error) throw error
       refresh()
@@ -106,7 +104,7 @@ export function useTransactionsActions({
       console.error('Error updating transaction:', error)
       toast.error('Failed to update transaction')
     }
-  }, [userId, refresh])
+  }, [userId, refresh, supabase])
 
   const handleBulkEdit = useCallback(async (ids: (number | string)[], changes: Partial<UpdateTransaction>) => {
     if (!userId) {
@@ -123,7 +121,6 @@ export function useTransactionsActions({
         ...(changes.description && { description: changes.description }),
         ...(changes.date && { date: changes.date }), // date is already a string
       }
-      const supabase = createClient()
       const { error } = await supabase.from('transactions').update(supabaseData).in('id', ids.map(id => Number(id))).eq('user_id', userId)
       if (error) throw error
       refresh()
@@ -132,7 +129,7 @@ export function useTransactionsActions({
       console.error('Error updating transactions:', error)
       toast.error('Failed to update transactions')
     }
-  }, [userId, refresh])
+  }, [userId, refresh, supabase])
 
   return { handleAddSuccess, handleDelete, handleBulkDelete, handleEdit, handleBulkEdit }
 }

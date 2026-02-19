@@ -21,19 +21,33 @@ DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
 DROP FUNCTION IF EXISTS get_transaction_summary(TEXT, DATE, DATE) CASCADE;
 DROP FUNCTION IF EXISTS get_spending_by_category(TEXT, DATE, DATE) CASCADE;
 DROP FUNCTION IF EXISTS requesting_user_id() CASCADE;
+DROP FUNCTION IF EXISTS is_authenticated() CASCADE;
 
 -- ============================================
--- HELPER FUNCTION: Get Clerk User ID from JWT
+-- HELPER FUNCTIONS: Clerk Authentication
 -- ============================================
--- This function extracts the Clerk user ID from the JWT token
--- Clerk stores the user ID in the 'sub' claim
+
+-- Function to get Clerk User ID from JWT 'sub' claim
+-- This is extracted from the Clerk session token
 CREATE OR REPLACE FUNCTION requesting_user_id()
 RETURNS TEXT AS $$
     SELECT NULLIF(
-        current_setting('request.jwt.claims', true)::json->>'sub',
+        auth.uid(),
         ''
-    )::TEXT;
+    );
 $$ LANGUAGE SQL STABLE;
+
+-- Function to check if user is authenticated via Clerk
+-- Verifies the 'role' claim is set to 'authenticated'
+CREATE OR REPLACE FUNCTION is_authenticated()
+RETURNS BOOLEAN AS $$
+BEGIN
+    RETURN (auth.jwt() ->> 'role') = 'authenticated';
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql STABLE;
 
 -- ============================================
 -- PROFILES TABLE
@@ -54,17 +68,26 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own profile" ON profiles
     FOR SELECT
     TO authenticated
-    USING (requesting_user_id() = id);
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = id
+    );
 
 CREATE POLICY "Users can update own profile" ON profiles
     FOR UPDATE
     TO authenticated
-    USING (requesting_user_id() = id);
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = id
+    );
 
 CREATE POLICY "Users can insert own profile" ON profiles
     FOR INSERT
     TO authenticated
-    WITH CHECK (requesting_user_id() = id);
+    WITH CHECK (
+        is_authenticated() 
+        AND requesting_user_id() = id
+    );
 
 -- Trigger to auto-update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -103,27 +126,42 @@ ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view default categories" ON categories
     FOR SELECT
     TO authenticated
-    USING (is_default = TRUE);
+    USING (
+        is_authenticated() 
+        AND is_default = TRUE
+    );
 
 CREATE POLICY "Users can view own categories" ON categories
     FOR SELECT
     TO authenticated
-    USING (requesting_user_id() = user_id);
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
 
 CREATE POLICY "Users can insert own categories" ON categories
     FOR INSERT
     TO authenticated
-    WITH CHECK (requesting_user_id() = user_id);
+    WITH CHECK (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
 
 CREATE POLICY "Users can update own categories" ON categories
     FOR UPDATE
     TO authenticated
-    USING (requesting_user_id() = user_id);
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
 
 CREATE POLICY "Users can delete own categories" ON categories
     FOR DELETE
     TO authenticated
-    USING (requesting_user_id() = user_id);
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
 
 CREATE TRIGGER update_categories_updated_at
     BEFORE UPDATE ON categories
@@ -159,26 +197,38 @@ CREATE INDEX IF NOT EXISTS idx_transactions_category_id ON transactions(category
 -- Enable Row Level Security
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
--- Transactions policies (using Clerk JWT)
+-- Transactions policies (using Clerk JWT with role verification)
 CREATE POLICY "Users can view own transactions" ON transactions
     FOR SELECT
     TO authenticated
-    USING (requesting_user_id() = user_id);
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
 
 CREATE POLICY "Users can insert own transactions" ON transactions
     FOR INSERT
     TO authenticated
-    WITH CHECK (requesting_user_id() = user_id);
+    WITH CHECK (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
 
 CREATE POLICY "Users can update own transactions" ON transactions
     FOR UPDATE
     TO authenticated
-    USING (requesting_user_id() = user_id);
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
 
 CREATE POLICY "Users can delete own transactions" ON transactions
     FOR DELETE
     TO authenticated
-    USING (requesting_user_id() = user_id);
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
 
 CREATE TRIGGER update_transactions_updated_at
     BEFORE UPDATE ON transactions
@@ -213,31 +263,152 @@ CREATE INDEX IF NOT EXISTS idx_recurring_transactions_frequency ON recurring_tra
 -- Enable Row Level Security
 ALTER TABLE recurring_transactions ENABLE ROW LEVEL SECURITY;
 
--- Recurring transactions policies (using Clerk JWT)
+-- Recurring transactions policies (using Clerk JWT with role verification)
 CREATE POLICY "Users can view own recurring transactions" ON recurring_transactions
     FOR SELECT
     TO authenticated
-    USING (requesting_user_id() = user_id);
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
 
 CREATE POLICY "Users can insert own recurring transactions" ON recurring_transactions
     FOR INSERT
     TO authenticated
-    WITH CHECK (requesting_user_id() = user_id);
+    WITH CHECK (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
 
 CREATE POLICY "Users can update own recurring transactions" ON recurring_transactions
     FOR UPDATE
     TO authenticated
-    USING (requesting_user_id() = user_id);
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
 
 CREATE POLICY "Users can delete own recurring transactions" ON recurring_transactions
     FOR DELETE
     TO authenticated
-    USING (requesting_user_id() = user_id);
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
 
 CREATE TRIGGER update_recurring_transactions_updated_at
     BEFORE UPDATE ON recurring_transactions
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
+-- ACCOUNT BALANCES TABLE
+-- Stores user account balances for tracking against bank accounts
+-- ============================================
+CREATE TABLE IF NOT EXISTS account_balances (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT NOT NULL DEFAULT requesting_user_id(),
+    account_type TEXT NOT NULL CHECK (account_type IN ('Cash', 'Savings', 'Checking', 'Credit Card', 'Investment', 'Other')),
+    current_balance DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    last_updated TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, account_type)
+);
+
+-- Create index for better query performance
+CREATE INDEX IF NOT EXISTS idx_account_balances_user_id ON account_balances(user_id);
+CREATE INDEX IF NOT EXISTS idx_account_balances_account_type ON account_balances(account_type);
+
+-- Enable Row Level Security
+ALTER TABLE account_balances ENABLE ROW LEVEL SECURITY;
+
+-- Account balances policies
+CREATE POLICY "Users can view own account balances" ON account_balances
+    FOR SELECT
+    TO authenticated
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
+
+CREATE POLICY "Users can insert own account balances" ON account_balances
+    FOR INSERT
+    TO authenticated
+    WITH CHECK (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
+
+CREATE POLICY "Users can update own account balances" ON account_balances
+    FOR UPDATE
+    TO authenticated
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
+
+CREATE POLICY "Users can delete own account balances" ON account_balances
+    FOR DELETE
+    TO authenticated
+    USING (
+        is_authenticated() 
+        AND requesting_user_id() = user_id
+    );
+
+CREATE TRIGGER update_account_balances_updated_at
+    BEFORE UPDATE ON account_balances
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- Function to calculate expected balance based on transactions
+CREATE OR REPLACE FUNCTION calculate_expected_balance(
+    p_user_id TEXT,
+    p_account_type TEXT
+)
+RETURNS DECIMAL AS $$
+DECLARE
+    v_balance DECIMAL;
+BEGIN
+    SELECT COALESCE(
+        SUM(CASE 
+            WHEN type = 'Income' THEN amount 
+            ELSE -amount 
+        END), 
+        0
+    ) INTO v_balance
+    FROM transactions
+    WHERE user_id = p_user_id
+      AND account_type = p_account_type;
+    
+    RETURN v_balance;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to get balance summary for all accounts
+CREATE OR REPLACE FUNCTION get_balance_summary(
+    p_user_id TEXT
+)
+RETURNS TABLE (
+    account_type TEXT,
+    expected_balance DECIMAL,
+    actual_balance DECIMAL,
+    difference DECIMAL,
+    last_updated TIMESTAMPTZ
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ab.account_type,
+        calculate_expected_balance(p_user_id, ab.account_type) as expected_balance,
+        ab.current_balance as actual_balance,
+        ab.current_balance - calculate_expected_balance(p_user_id, ab.account_type) as difference,
+        ab.last_updated
+    FROM account_balances ab
+    WHERE ab.user_id = p_user_id
+    ORDER BY ab.account_type;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
 -- DEFAULT CATEGORIES SEED DATA
@@ -325,37 +496,47 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated;
 
 -- ============================================
--- CLERK + SUPABASE INTEGRATION NOTES
+-- CLERK + SUPABASE MODERN INTEGRATION NOTES
 -- ============================================
 -- 
 -- 1. CLERK DASHBOARD SETUP:
---    - Go to Clerk Dashboard > JWT Templates
---    - Create a new template named "supabase"
---    - Use this template:
---    {
---      "aud": "authenticated",
---      "role": "authenticated",
---      "email": "{{user.primary_email_address}}",
---      "sub": "{{user.id}}"
---    }
+--    - Go to Clerk Dashboard → Sessions → Customize session token
+--    - Add claim: { "role": "authenticated" }
+--    - This is REQUIRED for Supabase to recognize authenticated users
 --
 -- 2. SUPABASE DASHBOARD SETUP:
---    - Go to Project Settings > API
---    - Copy your JWT Secret
---    - In Clerk, paste this as the signing key for the JWT template
+--    - Go to Authentication → Providers → Third-Party Auth
+--    - Add Clerk provider with your Frontend API URL
+--    - Example: https://your-app.clerk.accounts.dev
 --
--- 3. CLIENT SETUP (Next.js):
---    - Use session.getToken({ template: 'supabase' }) to get the token
---    - Pass this token to Supabase client via accessToken option
+-- 3. LOCAL DEVELOPMENT (supabase/config.toml):
+--    [auth.third_party.clerk]
+--    enabled = true
+--    domain = "your-app.clerk.accounts.dev"
 --
--- 4. EXAMPLE CLIENT CODE:
---    const client = createClient(
---      process.env.NEXT_PUBLIC_SUPABASE_URL!,
---      process.env.NEXT_PUBLIC_SUPABASE_KEY!,
---      {
---        async accessToken() {
---          return session?.getToken({ template: 'supabase' }) ?? null
---        },
---      }
---    )
+-- 4. CLIENT SETUP (Next.js):
+--    Use the accessToken option with createBrowserClient:
+--    
+--    const supabase = createBrowserClient(url, key, {
+--      accessToken: async () => {
+--        const token = await getToken() // from useAuth() hook
+--        return token ?? null
+--      },
+--      auth: {
+--        persistSession: false,
+--        autoRefreshToken: false,
+--      },
+--    })
 --
+-- 5. RLS POLICY DESIGN:
+--    All policies now use is_authenticated() function which checks:
+--    - (auth.jwt() ->> 'role') = 'authenticated'
+--    - This ensures only properly authenticated Clerk users can access data
+--
+-- 6. TROUBLESHOOTING:
+--    - If you get "Row Level Security policy violation" errors:
+--      a) Check Clerk session token has "role": "authenticated" claim
+--      b) Verify Supabase Third-Party Auth is enabled for Clerk
+--      c) Ensure you're using useSupabaseClient() hook (not createClient)
+--
+-- ============================================

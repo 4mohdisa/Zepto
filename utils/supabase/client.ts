@@ -1,38 +1,16 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { useAuth } from '@clerk/nextjs'
 
-/**
- * Creates a Supabase client for use in Client Components
- * Integrates with Clerk authentication using JWT tokens
- */
-export const createClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase environment variables')
-  }
-
-  return createBrowserClient(supabaseUrl, supabaseKey)
-}
+// Track if we've logged the connection error to avoid spam
+let hasLoggedConnectionError = false
 
 /**
- * Creates a Supabase client with Clerk authentication
- * Use this in client components where you need authenticated Supabase access
- *
- * @example
- * ```tsx
- * 'use client'
- * import { useSupabaseClient } from '@/utils/supabase/client'
- *
- * export function MyComponent() {
- *   const supabase = useSupabaseClient()
- *
- *   const fetchData = async () => {
- *     const { data } = await supabase.from('table').select()
- *   }
- * }
- * ```
+ * Hook to create an authenticated Supabase client with Clerk
+ * Uses the modern Third-Party Auth approach with accessToken option
+ * 
+ * CRITICAL: This is the ONLY way to make authenticated requests to Supabase
+ * when using Clerk for authentication. The accessToken option automatically
+ * adds the Clerk JWT to the Authorization header.
  */
 export const useSupabaseClient = () => {
   const { getToken } = useAuth()
@@ -45,27 +23,46 @@ export const useSupabaseClient = () => {
   }
 
   return createBrowserClient(supabaseUrl, supabaseKey, {
-    global: {
-      // Use fetch to dynamically get token for each request
-      fetch: async (url, options = {}) => {
-        const clerkToken = await getToken({ template: 'supabase' })
-
-        // Add Authorization header with Clerk token
-        const headers = new Headers(options?.headers)
-        if (clerkToken) {
-          headers.set('Authorization', `Bearer ${clerkToken}`)
+    // MODERN APPROACH: Use accessToken option for Clerk integration
+    // This automatically adds the Clerk session token to all requests
+    accessToken: async () => {
+      try {
+        const token = await getToken()
+        if (!token && !hasLoggedConnectionError) {
+          console.warn('[Supabase] No Clerk token available - requests may fail')
+          hasLoggedConnectionError = true
         }
-
-        return fetch(url, {
-          ...options,
-          headers,
-        })
-      },
+        return token ?? null
+      } catch (err) {
+        if (!hasLoggedConnectionError) {
+          console.error('[Supabase] Failed to get Clerk token:', err)
+          hasLoggedConnectionError = true
+        }
+        return null
+      }
     },
     auth: {
-      persistSession: false, // Don't persist Supabase sessions, use Clerk instead
+      persistSession: false, // Clerk manages sessions
       autoRefreshToken: false, // Clerk handles token refresh
       detectSessionInUrl: false,
     },
   })
+}
+
+/**
+ * ⚠️ WARNING: This creates an UNAUTHENTICATED Supabase client
+ * Only use this for public/unauthenticated queries (if any)
+ * 
+ * For ALL authenticated operations, you MUST use useSupabaseClient() hook
+ * which properly includes the Clerk JWT token
+ */
+export const createClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase environment variables')
+  }
+
+  return createBrowserClient(supabaseUrl, supabaseKey)
 }

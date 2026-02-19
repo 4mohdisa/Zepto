@@ -18,6 +18,7 @@ export default function RecurringTransactionsPage() {
     recurringTransactions,
     loading,
     refresh,
+    createRecurringTransaction,
     updateRecurringTransaction,
     deleteRecurringTransaction,
     bulkDeleteRecurringTransactions,
@@ -100,6 +101,8 @@ export default function RecurringTransactionsPage() {
         onSubmit={onAddSuccess}
         onRefresh={refresh}
         mode="create"
+        createRecurringTransaction={createRecurringTransaction}
+        updateRecurringTransaction={updateRecurringTransaction}
       />
 
       {/* Edit Dialog */}
@@ -109,6 +112,8 @@ export default function RecurringTransactionsPage() {
         onRefresh={refresh}
         initialData={editingTransaction as any}
         mode="edit"
+        createRecurringTransaction={createRecurringTransaction}
+        updateRecurringTransaction={updateRecurringTransaction}
       />
     </div>
   )

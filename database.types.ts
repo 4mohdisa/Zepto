@@ -19,7 +19,7 @@ export type Database = {
           total_expenses: number | null
           total_income: number | null
           unusual_transactions: Json | null
-          user_id: number | null
+          user_id: string | null
         }
         Insert: {
           created_at?: string | null
@@ -55,7 +55,7 @@ export type Database = {
           is_default: boolean | null
           name: string
           updated_at: string | null
-          user_id: number | null
+          user_id: string | null
         }
         Insert: {
           color?: string | null
@@ -91,7 +91,7 @@ export type Database = {
           original_file_name: string
           transaction_date_range: unknown | null
           uploaded_at: string | null
-          user_id: number | null
+          user_id: string | null
         }
         Insert: {
           description?: string | null
@@ -172,7 +172,7 @@ export type Database = {
           start_date: string
           type: string
           updated_at?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Update: {
           account_type?: string
@@ -188,7 +188,7 @@ export type Database = {
           start_date?: string
           type?: string
           updated_at?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -238,7 +238,7 @@ export type Database = {
           recurring_frequency?: string | null
           type?: string | null
           updated_at?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Update: {
           account_type?: string | null
@@ -254,7 +254,7 @@ export type Database = {
           recurring_frequency?: string | null
           type?: string | null
           updated_at?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -283,7 +283,7 @@ export type Database = {
           id: number
           recurring_transaction_id: number | null
           updated_at: string | null
-          user_id: number | null
+          user_id: string | null
         }
         Insert: {
           amount: number

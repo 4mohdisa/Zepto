@@ -20,34 +20,34 @@ export function QuickActions({
   onDateChange,
 }: QuickActionsProps) {
   return (
-    <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 pb-5 border-b border-gray-200">
       <MonthPicker date={selectedDate} onDateChange={onDateChange} />
       
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <Button
           onClick={onUploadFile}
           variant="outline"
           size="sm"
-          className="border-gray-300 text-gray-700 hover:bg-gray-50"
+          className="border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
         >
-          <Upload className="h-4 w-4 mr-2" />
-          Upload
+          <Upload className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Upload</span>
         </Button>
         <Button
           onClick={onAddBalance}
           variant="outline"
           size="sm"
-          className="border-gray-300 text-gray-700 hover:bg-gray-50"
+          className="border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
         >
-          <Wallet className="h-4 w-4 mr-2" />
-          Balance
+          <Wallet className="h-4 w-4 sm:mr-2" />
+          <span className="hidden sm:inline">Balance</span>
         </Button>
         <Button
           onClick={onAddTransaction}
           size="sm"
-          className="bg-[#635BFF] hover:bg-[#5851EA] text-white"
+          className="bg-[#635BFF] hover:bg-[#5851EA] text-white shadow-sm transition-all"
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4 mr-1.5" />
           Add transaction
         </Button>
       </div>

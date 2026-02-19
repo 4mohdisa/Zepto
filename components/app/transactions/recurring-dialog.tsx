@@ -21,6 +21,7 @@ import { accountTypes } from "@/data/account-types"
 import { useCategories } from "@/hooks/use-categories"
 import { useAuth } from '@/context/auth-context'
 import { BaseDialogProps, RecurringTransactionFormValues, recurringTransactionSchema } from '../shared/transaction-schema'
+import { RecurringTransaction } from '@/app/types/transaction'
 
 import { InputField, TextareaField, SelectField, DatePickerField } from '../shared/form-fields'
 import { LoadingButton } from '../shared/loading-button'
@@ -30,6 +31,8 @@ import { useRecurringTransactionSubmit } from './hooks/use-recurring-transaction
 interface RecurringTransactionDialogProps extends BaseDialogProps {
   onSubmit?: (data: RecurringTransactionFormValues) => void
   onRefresh?: () => void
+  createRecurringTransaction?: (data: Partial<RecurringTransaction>) => Promise<RecurringTransaction>
+  updateRecurringTransaction?: (id: number | string, data: Partial<RecurringTransaction>) => Promise<void>
 }
 
 const DEFAULT_VALUES: RecurringTransactionFormValues = {
@@ -50,6 +53,8 @@ export function RecurringTransactionDialog({
   onRefresh,
   initialData,
   mode,
+  createRecurringTransaction,
+  updateRecurringTransaction
 }: RecurringTransactionDialogProps) {
   const { user } = useAuth()
   const { categories } = useCategories()
@@ -72,7 +77,9 @@ export function RecurringTransactionDialog({
     initialDataId: initialData?.id,
     onSuccess: onClose,
     onSubmitCallback: onSubmit,
-    onRefresh
+    onRefresh,
+    createRecurringTransaction,
+    updateRecurringTransaction
   })
 
   // Memoize select options

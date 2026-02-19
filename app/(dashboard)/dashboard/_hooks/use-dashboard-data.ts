@@ -17,7 +17,7 @@ interface RawTransaction {
 interface ChartTransaction {
   date: string
   amount: number
-  type: string | null
+  type: string
   category_name: string | null
 }
 
@@ -52,7 +52,7 @@ export function useDashboardData(transactions: RawTransaction[] | undefined): Da
     return transactions.map(t => ({
       date: formatDate(t.date),
       amount: Number(t.amount),
-      type: t.type,
+      type: t.type || 'Expense', // Default to Expense if type is null
       category_name: t.category_name ?? null
     }))
   }, [transactions])

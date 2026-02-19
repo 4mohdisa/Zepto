@@ -1,7 +1,4 @@
-import { useCallback, useEffect } from 'react'
-import { format } from 'date-fns'
-import { toast } from 'sonner'
-import { transactionService } from '@/app/services/transaction-services'
+import { useCallback } from 'react'
 import { UpdateTransaction } from '@/app/types/transaction'
 
 interface User {
@@ -29,44 +26,8 @@ export function useDashboardActions({
   updateTransaction,
   bulkUpdateTransactions
 }: UseDashboardActionsProps) {
-  // Process any due recurring transactions on mount
-  useEffect(() => {
-    const generateDueTransactions = async () => {
-      if (!user) return
-
-      try {
-        const generatedTransactions = await transactionService.generateDueTransactions(user.id)
-        
-        if (generatedTransactions && generatedTransactions.length > 0) {
-          toast.success(`${generatedTransactions.length} transaction(s) generated from recurring schedules`)
-          refreshTransactions()
-        }
-      } catch (error) {
-        console.error('Error generating due transactions:', error)
-        toast.error('Failed to process recurring transactions')
-      }
-    }
-
-    generateDueTransactions()
-  }, [user, refreshTransactions])
-
-  const handleTransactionSubmit = useCallback(async (data: any) => {
-    if (!user) return
-
-    try {
-      if (data.transactionType === "regular") {
-        const transactionData = {
-          ...data,
-          user_id: user.id
-        }
-        await transactionService.createTransaction(transactionData)
-      } else {
-        await transactionService.createCombinedTransaction(data, user.id)
-      }
-    } catch (error) {
-      console.error("Failed to create transaction:", error)
-    }
-  }, [user])
+  // Note: Transaction submission now handled by TransactionDialog with authenticated hooks
+  // No longer need handleTransactionSubmit - it's just a pass-through callback
 
   const handleDeleteTransaction = useCallback(async (id: number | string) => {
     try {
@@ -103,7 +64,6 @@ export function useDashboardActions({
   }, [bulkUpdateTransactions])
 
   return {
-    handleTransactionSubmit,
     handleDeleteTransaction,
     handleBulkDelete,
     handleEditTransaction,

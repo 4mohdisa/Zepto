@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 
 interface Transaction {
   amount: number
-  type: string | null
+  type: string
   category_name?: string | null
   date?: string | Date
   [key: string]: any
@@ -28,18 +28,18 @@ interface StatCardProps {
 
 const StatCard = React.memo(({ title, value, trend, isLast }: StatCardProps) => {
   return (
-    <div className={cn("flex flex-col py-5", !isLast && "border-r border-gray-200 pr-8")}>
-      <span className="text-xs font-medium text-gray-600 uppercase tracking-wider mb-2">
+    <div className={cn("flex flex-col py-6 px-6", !isLast && "sm:border-r border-gray-200")}>
+      <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2.5">
         {title}
       </span>
-      <div className="flex items-baseline gap-3">
-        <span className="text-2xl font-semibold text-gray-900">
+      <div className="flex items-baseline gap-2.5">
+        <span className="text-2xl sm:text-3xl font-semibold text-gray-900 tabular-nums">
           {typeof value === 'number' ? formatCurrency(value) : value}
         </span>
         {trend && (
           <div className={cn(
-            "flex items-center text-xs font-medium",
-            trend.isPositive ? "text-green-600" : "text-red-600"
+            "flex items-center text-xs font-semibold px-1.5 py-0.5 rounded",
+            trend.isPositive ? "text-green-700 bg-green-50" : "text-red-700 bg-red-50"
           )}>
             {trend.isPositive ? (
               <TrendingUp className="h-3 w-3 mr-0.5" />
@@ -57,9 +57,9 @@ const StatCard = React.memo(({ title, value, trend, isLast }: StatCardProps) => 
 StatCard.displayName = 'StatCard'
 
 const StatCardSkeleton = ({ isLast }: { isLast?: boolean }) => (
-  <div className={cn("flex flex-col py-5", !isLast && "border-r border-gray-200 pr-8")}>
-    <Skeleton className="h-3 w-20 mb-2 bg-gray-200" />
-    <Skeleton className="h-7 w-28 bg-gray-200" />
+  <div className={cn("flex flex-col py-6 px-6", !isLast && "sm:border-r border-gray-200")}>
+    <Skeleton className="h-3 w-20 mb-2.5 bg-gray-200" />
+    <Skeleton className="h-8 w-32 bg-gray-200" />
   </div>
 )
 
@@ -150,8 +150,8 @@ export const StatsOverview = React.memo(function StatsOverview({
 
   if (isLoading) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg">
-        <div className="grid grid-cols-4 divide-x divide-gray-200 px-6">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
           {[1, 2, 3, 4].map((i) => (
             <StatCardSkeleton key={i} isLast={i === 4} />
           ))}
@@ -183,8 +183,8 @@ export const StatsOverview = React.memo(function StatsOverview({
   ]
   
   return (
-    <div className="bg-white border border-gray-200 rounded-lg mb-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 px-6">
+    <div className="bg-white border border-gray-200 rounded-xl shadow-sm mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
         {stats.map((stat, index) => (
           <StatCard key={stat.title} {...stat} isLast={index === stats.length - 1} />
         ))}

@@ -31,6 +31,8 @@ interface TransactionDialogProps extends Omit<BaseDialogProps, 'mode'> {
   initialData?: Partial<TransactionFormValues>
   mode: 'create' | 'edit'
   onSubmit?: (data: TransactionFormValues) => void
+  createTransaction?: (data: Partial<any>) => Promise<any>
+  updateTransaction?: (id: number | string, data: Partial<any>) => Promise<void>
 }
 
 const DEFAULT_VALUES: TransactionFormValues = {
@@ -49,7 +51,9 @@ export function TransactionDialog({
   onClose,
   onSubmit,
   initialData,
-  mode = 'create'
+  mode = 'create',
+  createTransaction,
+  updateTransaction
 }: TransactionDialogProps) {
   const { user } = useAuth()
   const { categories, loading: categoriesLoading, error: categoriesError } = useCategories()
@@ -76,7 +80,9 @@ export function TransactionDialog({
       form.reset()
       onClose()
     },
-    onSubmitCallback: onSubmit
+    onSubmitCallback: onSubmit,
+    createTransaction,
+    updateTransaction
   })
 
   // Memoize select options
@@ -88,12 +94,9 @@ export function TransactionDialog({
     accountTypes.map(t => ({ value: t.value, label: t.label })), 
   [])
   
-  const categoryOptions = useMemo(() => {
-    console.log('🏷️ Building category options from:', categories?.length || 0, 'categories')
-    const options = categories?.map(c => ({ value: String(c.id), label: c.name })) || []
-    console.log('📋 Category options:', options)
-    return options
-  }, [categories])
+  const categoryOptions = useMemo(() => 
+    categories?.map(c => ({ value: String(c.id), label: c.name })) || [],
+  [categories])
   
   const frequencyOptions = useMemo(() => [
     { value: "Never", label: "One-time Transaction" },

@@ -75,63 +75,65 @@ export function MonthlyComparison({ transactions = [] }: MonthlyComparisonProps)
   const prevMonth = monthNames[new Date().getMonth() === 0 ? 11 : new Date().getMonth() - 1]
 
   return (
-    <Card className="border-gray-200">
-      <CardHeader className="pb-3">
+    <Card className="border-gray-200 shadow-sm">
+      <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-gray-900">Month comparison</CardTitle>
-          <Calendar className="h-4 w-4 text-gray-400" />
+          <CardTitle className="text-base font-semibold text-gray-900">Month Comparison</CardTitle>
+          <div className="p-1.5 rounded-md bg-blue-50">
+            <Calendar className="h-4 w-4 text-blue-600" />
+          </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
+        <div className="space-y-5">
           {/* Income Comparison */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-600">Income</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Income</span>
               <div className="flex items-center gap-2">
                 {comparison.changes.income !== 0 && (
-                  <span className={`text-xs font-medium flex items-center gap-0.5 ${comparison.changes.income > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`text-xs font-semibold flex items-center gap-0.5 px-1.5 py-0.5 rounded ${comparison.changes.income > 0 ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'}`}>
                     {comparison.changes.income > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {Math.abs(comparison.changes.income).toFixed(0)}%
                   </span>
                 )}
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="text-xs text-gray-500">{currentMonth}</div>
-                <div className="text-sm font-semibold text-gray-900 tabular-nums">{formatCurrency(comparison.current.income)}</div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">{currentMonth}</div>
+                <div className="text-base font-semibold text-gray-900 tabular-nums">{formatCurrency(comparison.current.income)}</div>
               </div>
-              <div className="flex-1 text-right">
-                <div className="text-xs text-gray-500">{prevMonth}</div>
-                <div className="text-sm font-medium text-gray-600 tabular-nums">{formatCurrency(comparison.previous.income)}</div>
+              <div className="flex-1 p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">{prevMonth}</div>
+                <div className="text-base font-medium text-gray-600 tabular-nums">{formatCurrency(comparison.previous.income)}</div>
               </div>
             </div>
           </div>
 
-          <div className="border-t border-gray-100" />
+          <div className="border-t border-gray-200" />
 
           {/* Expenses Comparison */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-600">Expenses</span>
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Expenses</span>
               <div className="flex items-center gap-2">
                 {comparison.changes.expenses !== 0 && (
-                  <span className={`text-xs font-medium flex items-center gap-0.5 ${comparison.changes.expenses < 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`text-xs font-semibold flex items-center gap-0.5 px-1.5 py-0.5 rounded ${comparison.changes.expenses < 0 ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'}`}>
                     {comparison.changes.expenses < 0 ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
                     {Math.abs(comparison.changes.expenses).toFixed(0)}%
                   </span>
                 )}
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="text-xs text-gray-500">{currentMonth}</div>
-                <div className="text-sm font-semibold text-gray-900 tabular-nums">{formatCurrency(comparison.current.expenses)}</div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">{currentMonth}</div>
+                <div className="text-base font-semibold text-gray-900 tabular-nums">{formatCurrency(comparison.current.expenses)}</div>
               </div>
-              <div className="flex-1 text-right">
-                <div className="text-xs text-gray-500">{prevMonth}</div>
-                <div className="text-sm font-medium text-gray-600 tabular-nums">{formatCurrency(comparison.previous.expenses)}</div>
+              <div className="flex-1 p-3 bg-gray-50 rounded-lg">
+                <div className="text-xs text-gray-500 mb-1">{prevMonth}</div>
+                <div className="text-base font-medium text-gray-600 tabular-nums">{formatCurrency(comparison.previous.expenses)}</div>
               </div>
             </div>
           </div>
