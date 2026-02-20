@@ -13,9 +13,10 @@ import { useTransactionsActions } from './_hooks'
 import { TransactionDialog } from '@/components/app/transactions/transaction-dialog'
 import { TransactionsContent } from './_components'
 
+// Show last 8 months to include populated historical data
 const DEFAULT_DATE_RANGE = {
-  from: startOfMonth(new Date()),
-  to: endOfMonth(new Date())
+  from: new Date(2025, 6, 1), // July 2025
+  to: endOfMonth(new Date())   // Current month end
 }
 
 export default function TransactionsPage() {

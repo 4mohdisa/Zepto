@@ -105,12 +105,15 @@ export function EnhancedDebugPanel() {
   useEffect(() => {
     const handleOnline = () => {
       setNetworkStatus('online')
-      logger.success('Network connection restored')
+      // Only log if actually changed to avoid spam
+      if (networkStatus === 'offline') {
+        logger.success('Network connection restored')
+      }
     }
     
     const handleOffline = () => {
       setNetworkStatus('offline')
-      logger.error('Network connection lost')
+      logger.warn('Network connection lost')
     }
 
     window.addEventListener('online', handleOnline)
@@ -120,7 +123,7 @@ export function EnhancedDebugPanel() {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
-  }, [logger])
+  }, [logger, networkStatus])
 
   // Monitor logs for network errors
   useEffect(() => {
