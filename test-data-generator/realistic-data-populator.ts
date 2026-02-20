@@ -243,7 +243,7 @@ export async function generateRealisticData(
   // LIFESTYLE - HIGH FREQUENCY
   // ============================================
   
-  // Shisha Lounge - Every 2 days
+  // Shisha Lounge - Every 3 days (reduced from every 2 days)
   console.log('🌿 Generating sh lounge expenses...');
   const shishaMerchants = ['Sheesha Lounge', 'Boss of Shisha', 'Layali Lounge'];
   let shishaDate = new Date('2025-07-10');
@@ -257,10 +257,10 @@ export async function generateRealisticData(
       date: formatDate(shishaDate),
       description: 'Shisha session'
     });
-    shishaDate = addDays(shishaDate, 2);
+    shishaDate = addDays(shishaDate, 3); // Every 3 days instead of 2
   }
   
-  // Eating Out - Lunch - Every 2 days
+  // Eating Out - Lunch - Every 3 days (reduced from every 2 days)
   console.log('🍽️ Generating lunch expenses...');
   const lunchMerchants = ['Al Sultan', 'Mezza', 'McDonalds', 'Hungry Jacks', 'Subway', 'Byblos'];
   let lunchDate = new Date('2025-07-05');
@@ -274,16 +274,16 @@ export async function generateRealisticData(
       date: formatDate(lunchDate),
       description: 'Lunch'
     });
-    lunchDate = addDays(lunchDate, 2);
+    lunchDate = addDays(lunchDate, 3); // Every 3 days instead of 2
   }
   
-  // OTR Convenience / Fuel - 4-6 times per week
+  // OTR Convenience / Fuel - 2-3 times per week (reduced from 4-6)
   console.log('⛽ Generating OTR expenses...');
   currentMonth = new Date(startDate);
   while (currentMonth <= endDate) {
     const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
     const weeksInMonth = 4;
-    const totalOTR = weeksInMonth * randomInt(4, 6);
+    const totalOTR = weeksInMonth * randomInt(2, 3); // Reduced from 4-6 to 2-3
     const otrDates = getRandomDates(currentMonth, monthEnd, totalOTR);
     otrDates.forEach(date => {
       transactions.push({
@@ -299,13 +299,13 @@ export async function generateRealisticData(
     currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
   }
   
-  // Coffee / Small Café - 3-5 times per week
+  // Coffee / Small Café - 2-3 times per week (reduced from 3-5)
   console.log('☕ Generating coffee expenses...');
   currentMonth = new Date(startDate);
   while (currentMonth <= endDate) {
     const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
     const weeksInMonth = 4;
-    const totalCoffee = weeksInMonth * randomInt(3, 5);
+    const totalCoffee = weeksInMonth * randomInt(2, 3); // Reduced from 3-5 to 2-3
     const coffeeDates = getRandomDates(currentMonth, monthEnd, totalCoffee);
     coffeeDates.forEach(date => {
       transactions.push({
@@ -477,9 +477,17 @@ export async function generateRealisticData(
   let createdCount = 0;
   let errorCount = 0;
   
-  // Create in batches to avoid overwhelming
-  const batchSize = 10;
+  // Create in batches to avoid overwhelming the database
+  const batchSize = 5; // Smaller batches
+  const maxErrors = 20; // Stop if too many errors
+  
   for (let i = 0; i < transactions.length; i += batchSize) {
+    // Stop if too many errors
+    if (errorCount >= maxErrors) {
+      console.error(`❌ Stopped due to too many errors (${errorCount}). Database may be overloaded.`);
+      break;
+    }
+    
     const batch = transactions.slice(i, i + batchSize);
     
     for (const txn of batch) {
@@ -494,19 +502,24 @@ export async function generateRealisticData(
           description: txn.description,
         });
         createdCount++;
-      } catch (error) {
-        console.error(`Failed to create transaction: ${txn.name}`, error);
+      } catch (error: any) {
         errorCount++;
+        // Only log first few errors to avoid console spam
+        if (errorCount <= 3) {
+          console.error(`Failed to create transaction: ${txn.name}`, error.message || error);
+        } else if (errorCount === 4) {
+          console.error('... more errors (suppressing output)');
+        }
       }
     }
     
-    // Small delay between batches
+    // Longer delay between batches to prevent database overload
     if (i + batchSize < transactions.length) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
     
     // Progress update
-    if (createdCount % 50 === 0) {
+    if (createdCount % 25 === 0) {
       console.log(`✅ Created ${createdCount}/${transactions.length} transactions...`);
     }
   }
