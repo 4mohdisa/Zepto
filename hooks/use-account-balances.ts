@@ -12,6 +12,7 @@ export function useAccountBalances() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [usingFallback, setUsingFallback] = useState(false)
   const { user } = useAuth()
   const supabase = useSupabaseClient()
   
@@ -32,6 +33,7 @@ export function useAccountBalances() {
       try {
         setLoading(true)
         setError(null)
+        setUsingFallback(false)
         
         // Fetch account balances
         const { data: balancesData, error: balancesError } = await supabase
@@ -46,17 +48,58 @@ export function useAccountBalances() {
           setBalances(balancesData || [])
         }
 
-        // Fetch current balance summary (bank-style calculation)
-        const { data: summaryData, error: summaryError } = await supabase
-          .rpc('get_current_balance_summary', { p_user_id: user.id })
+        // Try to fetch current balance summary (bank-style calculation)
+        try {
+          const { data: summaryData, error: summaryError } = await supabase
+            .rpc('get_current_balance_summary', { p_user_id: user.id })
 
-        if (summaryError) throw summaryError
+          if (summaryError) {
+            // If function doesn't exist, use fallback calculation
+            console.warn('[useAccountBalances] Using fallback calculation - run migration 009_update_balance_system.sql')
+            setUsingFallback(true)
+            
+            // Fallback: Calculate from balances directly without effective date logic
+            const fallbackSummary = (balancesData || []).map((balance: any) => ({
+              account_type: balance.account_type,
+              starting_balance: Number(balance.current_balance),
+              effective_date: balance.effective_date || new Date().toISOString().split('T')[0],
+              income_after: 0,
+              expenses_after: 0,
+              current_balance: Number(balance.current_balance)
+            }))
+            
+            if (!isCancelled) {
+              setCurrentBalanceSummary(fallbackSummary)
+            }
+          } else {
+            if (!isCancelled) {
+              setCurrentBalanceSummary(summaryData || [])
+            }
+          }
+        } catch (rpcError) {
+          console.warn('[useAccountBalances] RPC failed, using fallback:', rpcError)
+          setUsingFallback(true)
+          
+          // Fallback calculation
+          const fallbackSummary = (balancesData || []).map((balance: any) => ({
+            account_type: balance.account_type,
+            starting_balance: Number(balance.current_balance),
+            effective_date: balance.effective_date || new Date().toISOString().split('T')[0],
+            income_after: 0,
+            expenses_after: 0,
+            current_balance: Number(balance.current_balance)
+          }))
+          
+          if (!isCancelled) {
+            setCurrentBalanceSummary(fallbackSummary)
+          }
+        }
 
         if (!isCancelled) {
-          setCurrentBalanceSummary(summaryData || [])
           console.info('[useAccountBalances] Fetched successfully', { 
             balancesCount: balancesData?.length || 0,
-            summaryCount: summaryData?.length || 0
+            summaryCount: balancesData?.length || 0,
+            usingFallback
           })
         }
       } catch (err) {
@@ -92,6 +135,7 @@ export function useAccountBalances() {
     try {
       const effectiveDate = data.effective_date || new Date().toISOString().split('T')[0]
       
+      // Check if effective_date column exists by trying to use it
       const { error } = await supabase
         .from('account_balances')
         .upsert({
@@ -104,7 +148,25 @@ export function useAccountBalances() {
           onConflict: 'user_id,account_type'
         })
 
-      if (error) throw error
+      if (error) {
+        // If effective_date doesn't exist, try without it
+        if (error.message?.includes('effective_date')) {
+          console.warn('[useAccountBalances] effective_date column not found, using legacy upsert')
+          const { error: legacyError } = await supabase
+            .from('account_balances')
+            .upsert({
+              user_id: user.id,
+              account_type: data.account_type,
+              current_balance: data.current_balance,
+              last_updated: new Date().toISOString()
+            }, {
+              onConflict: 'user_id,account_type'
+            })
+          if (legacyError) throw legacyError
+        } else {
+          throw error
+        }
+      }
 
       console.info('[useAccountBalances] Balance upserted, refreshing...')
       await refresh()
@@ -180,13 +242,19 @@ export function useAccountBalances() {
           p_account_type: accountType 
         })
 
-      if (error) throw error
+      if (error) {
+        // Fallback: just return the stored balance
+        const balance = balances.find(b => b.account_type === accountType)
+        return balance ? Number(balance.current_balance) : 0
+      }
       return data || 0
     } catch (err) {
       console.error('Error calculating current balance:', err)
-      return 0
+      // Fallback
+      const balance = balances.find(b => b.account_type === accountType)
+      return balance ? Number(balance.current_balance) : 0
     }
-  }, [user?.id, supabase])
+  }, [user?.id, supabase, balances])
 
   // Calculate totals for current balance
   const totals = useMemo(() => {
@@ -206,7 +274,7 @@ export function useAccountBalances() {
   // Get the latest effective date across all accounts
   const latestEffectiveDate = useMemo(() => {
     if (balances.length === 0) return null
-    const dates = balances.map(b => new Date(b.effective_date))
+    const dates = balances.map(b => new Date(b.effective_date || b.last_updated))
     const latest = new Date(Math.max(...dates.map(d => d.getTime())))
     return latest.toISOString().split('T')[0]
   }, [balances])
@@ -216,6 +284,7 @@ export function useAccountBalances() {
     currentBalanceSummary,
     loading,
     error,
+    usingFallback,
     refresh,
     upsertBalance,
     updateBalance,

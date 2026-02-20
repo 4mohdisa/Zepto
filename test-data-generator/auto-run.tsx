@@ -30,63 +30,26 @@ export function AutoRunDataPopulation() {
     // Mark as mounted
     isMounted.current = true;
     
-    // Only run in development
-    if (process.env.NODE_ENV === 'production') {
-      console.log('🚫 Auto-population disabled in production');
-      return;
-    }
-
-    // Check if already run in this session
-    if (typeof window !== 'undefined' && (window as any).__dataPopulated) {
-      console.log('ℹ️ Data already populated in this session');
-      return;
-    }
-
-    const runPopulation = async () => {
-      // Wait for next tick to ensure component is fully mounted
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Check if still mounted
-      if (!isMounted.current) return;
-      
-      setStatus('running');
-      console.log('🚀 Starting automatic data population...');
-      
-      try {
+    // DISABLED: Manual trigger only - uncomment to enable auto-population
+    console.log('ℹ️ Auto-population is disabled. Run window.runTestDataPopulation() in console to populate data.');
+    
+    // Expose manual trigger
+    if (typeof window !== 'undefined') {
+      (window as any).runTestDataPopulation = async () => {
+        if ((window as any).__dataPopulated) {
+          alert('Data already populated. Refresh the page first.');
+          return;
+        }
+        setStatus('running');
         await autoPopulateData(createTransaction, createRecurringTransaction);
-        
-        // Check if still mounted before updating state
-        if (!isMounted.current) return;
-        
-        // Mark as populated
-        if (typeof window !== 'undefined') {
-          (window as any).__dataPopulated = true;
-        }
-        
+        (window as any).__dataPopulated = true;
         setStatus('complete');
-        setProgress(100);
-        
-        // Show completion alert
-        setTimeout(() => {
-          if (isMounted.current) {
-            alert('✅ Data population complete! Refresh the page to see all transactions.');
-          }
-        }, 1000);
-        
-      } catch (error) {
-        console.error('❌ Auto-population failed:', error);
-        if (isMounted.current) {
-          setStatus('error');
-        }
-      }
-    };
-
-    // Run after a short delay to ensure component is mounted
-    const timeoutId = setTimeout(runPopulation, 500);
+        alert('✅ Data population complete!');
+      };
+    }
     
     return () => {
       isMounted.current = false;
-      clearTimeout(timeoutId);
     };
   }, [createTransaction, createRecurringTransaction]);
 
