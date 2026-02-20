@@ -26,6 +26,11 @@ export { autoPopulateData, getErrorLogs, getSuccessLogs, clearLogs } from './aut
 // UI Components
 export { TestDataGenerator } from './test-data-generator-component';
 export { HookBridge } from './hook-bridge';
+export { RealisticDataButton } from './realistic-data-button';
+
+// Realistic Data Generator
+export { generateRealisticData } from './realistic-data-populator';
+export { populateRealisticData } from './browser-realistic';
 
 // AI Generators
 export { 
