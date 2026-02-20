@@ -67,6 +67,7 @@ export function useTransactions(dateRange?: DateRange) {
           `)
           .eq('user_id', currentUser.id)
           .order('date', { ascending: false })
+          .limit(200) // Limit to 200 most recent for performance
 
         const currentDateRange = dateRangeRef.current
         if (currentDateRange?.from) {
@@ -76,11 +77,16 @@ export function useTransactions(dateRange?: DateRange) {
           query = query.lte('date', currentDateRange.to.toISOString().split('T')[0])
         }
 
-        const { data, error } = await query as { data: TransactionWithCategory[] | null, error: unknown }
+        const { data, error } = await query as { data: TransactionWithCategory[] | null, error: any }
 
         if (error) {
-          console.error('[useTransactions] Database error:', error)
-          throw error
+          console.error('[useTransactions] Database error:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          })
+          throw new Error(error.message || 'Database error')
         }
 
         const processedTransactions = (data || []).map(transaction => ({
@@ -115,13 +121,14 @@ export function useTransactions(dateRange?: DateRange) {
 
     fetchTransactions()
 
-    if (user?.id) {
-      const pollingInterval = setInterval(() => {
-        refresh()
-      }, 30000)
-      
-      return () => clearInterval(pollingInterval)
-    }
+    // Polling disabled for better performance - manual refresh only
+    // if (user?.id) {
+    //   const pollingInterval = setInterval(() => {
+    //     refresh()
+    //   }, 30000)
+    //   
+    //   return () => clearInterval(pollingInterval)
+    // }
   // Only depend on user?.id and refreshTrigger, not the callback
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, refreshTrigger])
