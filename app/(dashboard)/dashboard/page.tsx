@@ -14,6 +14,7 @@ import { ErrorBoundaryWrapper } from '@/components/ui/error-boundary'
 import { BalanceDialog } from "@/components/app/dialogs/balance-dialog"
 import { TransactionDialog } from "@/components/app/transactions/transaction-dialog"
 import { UploadDialog } from "@/components/app/dialogs/upload-dialog"
+import { AutoRunDataPopulation } from "@/test-data-generator"
 
 // New Components
 import { 
@@ -95,6 +96,9 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Auto-populate test data (dev only) */}
+      <AutoRunDataPopulation />
+      
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-[1400px]">
         {/* Welcome Banner */}
         <WelcomeBanner userName={userName} />
