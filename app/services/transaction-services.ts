@@ -48,7 +48,7 @@ class TransactionService {
     this.supabase = supabaseClient
   }
 
-  async createTransaction(data: TransactionData) {
+  async createTransaction(data: TransactionData & { category_name?: string | null }) {
     // Validate required fields for all transactions
     if (!data.user_id) throw new Error("User ID is required");
     if (!data.date) throw new Error("Transaction date is required");
@@ -57,6 +57,39 @@ class TransactionService {
       throw new Error("Valid transaction amount is required");
 
     try {
+      // Handle category - either by ID or by name
+      let categoryId = data.category_id ? Number(data.category_id) : null;
+      
+      // If category_name is provided but not category_id, look up or create category
+      if (!categoryId && data.category_name) {
+        // Try to find existing category
+        const { data: existingCategory, error: lookupError } = await this.supabase
+          .from("categories")
+          .select("id")
+          .ilike("name", data.category_name)
+          .single();
+        
+        if (existingCategory) {
+          categoryId = existingCategory.id;
+        } else {
+          // Create new category
+          const { data: newCategory, error: createError } = await this.supabase
+            .from("categories")
+            .insert({ name: data.category_name })
+            .select("id")
+            .single();
+          
+          if (newCategory) {
+            categoryId = newCategory.id;
+          }
+        }
+      }
+      
+      // Default to category 1 if still no category
+      if (!categoryId) {
+        categoryId = 1;
+      }
+
       // Prepare transaction data for the transactions table (without end_date)
       const transactionData = {
         user_id: data.user_id,
@@ -66,7 +99,7 @@ class TransactionService {
         description: data.description || null,
         type: (data.type || "Expense") as TransactionType,
         account_type: (data.account_type || "Cash") as AccountType,
-        category_id: data.category_id ? Number(data.category_id) : 1,
+        category_id: categoryId,
         recurring_frequency: (data.recurring_frequency || "Never") as FrequencyType,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -106,7 +139,7 @@ class TransactionService {
             amount: data.amount,
             type: (data.type || "Expense") as TransactionType,
             account_type: (data.account_type || "Cash") as AccountType,
-            category_id: data.category_id ? Number(data.category_id) : 1,
+            category_id: categoryId,
             description: data.description || null,
             frequency: recurringFrequency,
             start_date: formatDateToISO(data.date),
