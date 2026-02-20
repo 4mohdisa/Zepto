@@ -4,29 +4,22 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useSupabaseClient } from '@/utils/supabase/client'
 import { useAuth } from '@/context/auth-context'
 import { toast } from 'sonner'
-import type { AccountBalance, BalanceSummary, CreateBalanceData, UpdateBalanceData, AccountType } from '@/app/types/balance'
+import type { AccountBalance, CurrentBalanceSummary, CreateBalanceData, UpdateBalanceData, AccountType } from '@/app/types/balance'
 
 export function useAccountBalances() {
   const [balances, setBalances] = useState<AccountBalance[]>([])
-  const [balanceSummary, setBalanceSummary] = useState<BalanceSummary[]>([])
+  const [currentBalanceSummary, setCurrentBalanceSummary] = useState<CurrentBalanceSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const { user } = useAuth()
   const supabase = useSupabaseClient()
   
-  // Store userId to detect changes
-  const userIdRef = useRef<string | undefined>(user?.id)
-  
-  // Track if this is the initial fetch
-  const isInitialMount = useRef(true)
-
-  // Fetch account balances - this effect runs when refreshTrigger changes
+  // Fetch account balances and current balance summary
   useEffect(() => {
-    // Only fetch if we have a user
     if (!user?.id) {
       setBalances([])
-      setBalanceSummary([])
+      setCurrentBalanceSummary([])
       setLoading(false)
       return
     }
@@ -53,14 +46,14 @@ export function useAccountBalances() {
           setBalances(balancesData || [])
         }
 
-        // Fetch balance summary using the database function
+        // Fetch current balance summary (bank-style calculation)
         const { data: summaryData, error: summaryError } = await supabase
-          .rpc('get_balance_summary', { p_user_id: user.id })
+          .rpc('get_current_balance_summary', { p_user_id: user.id })
 
         if (summaryError) throw summaryError
 
         if (!isCancelled) {
-          setBalanceSummary(summaryData || [])
+          setCurrentBalanceSummary(summaryData || [])
           console.info('[useAccountBalances] Fetched successfully', { 
             balancesCount: balancesData?.length || 0,
             summaryCount: summaryData?.length || 0
@@ -86,7 +79,7 @@ export function useAccountBalances() {
     }
   }, [user?.id, refreshTrigger, supabase])
 
-  // Refresh function - increments trigger to cause re-fetch
+  // Refresh function
   const refresh = useCallback(async (): Promise<void> => {
     console.info('[useAccountBalances] Refreshing...')
     setRefreshTrigger(prev => prev + 1)
@@ -97,12 +90,15 @@ export function useAccountBalances() {
     if (!user?.id) throw new Error('User not authenticated')
 
     try {
+      const effectiveDate = data.effective_date || new Date().toISOString().split('T')[0]
+      
       const { error } = await supabase
         .from('account_balances')
         .upsert({
           user_id: user.id,
           account_type: data.account_type,
           current_balance: data.current_balance,
+          effective_date: effectiveDate,
           last_updated: new Date().toISOString()
         }, {
           onConflict: 'user_id,account_type'
@@ -125,12 +121,18 @@ export function useAccountBalances() {
     if (!user?.id) throw new Error('User not authenticated')
 
     try {
+      const updateData: any = {
+        current_balance: data.current_balance,
+        last_updated: new Date().toISOString()
+      }
+      
+      if (data.effective_date) {
+        updateData.effective_date = data.effective_date
+      }
+      
       const { error } = await supabase
         .from('account_balances')
-        .update({
-          current_balance: data.current_balance,
-          last_updated: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', id)
         .eq('user_id', user.id)
 
@@ -167,13 +169,13 @@ export function useAccountBalances() {
     }
   }, [user?.id, supabase, refresh])
 
-  // Get expected balance for a specific account type (calculated from transactions)
-  const getExpectedBalance = useCallback(async (accountType: AccountType): Promise<number> => {
+  // Calculate current balance for a specific account
+  const calculateCurrentBalance = useCallback(async (accountType: AccountType): Promise<number> => {
     if (!user?.id) return 0
 
     try {
       const { data, error } = await supabase
-        .rpc('calculate_expected_balance', { 
+        .rpc('calculate_current_balance', { 
           p_user_id: user.id,
           p_account_type: accountType 
         })
@@ -181,34 +183,45 @@ export function useAccountBalances() {
       if (error) throw error
       return data || 0
     } catch (err) {
-      console.error('Error calculating expected balance:', err)
+      console.error('Error calculating current balance:', err)
       return 0
     }
   }, [user?.id, supabase])
 
-  // Calculate totals
+  // Calculate totals for current balance
   const totals = useMemo(() => {
-    const totalActual = balances.reduce((sum, b) => sum + Number(b.current_balance), 0)
-    const totalExpected = balanceSummary.reduce((sum, b) => sum + Number(b.expected_balance), 0)
-    const totalDifference = totalActual - totalExpected
+    const totalCurrentBalance = currentBalanceSummary.reduce((sum, b) => sum + Number(b.current_balance), 0)
+    const totalStartingBalance = currentBalanceSummary.reduce((sum, b) => sum + Number(b.starting_balance), 0)
+    const totalIncome = currentBalanceSummary.reduce((sum, b) => sum + Number(b.income_after), 0)
+    const totalExpenses = currentBalanceSummary.reduce((sum, b) => sum + Number(b.expenses_after), 0)
     
     return {
-      totalActual,
-      totalExpected,
-      totalDifference
+      totalCurrentBalance,
+      totalStartingBalance,
+      totalIncome,
+      totalExpenses
     }
-  }, [balances, balanceSummary])
+  }, [currentBalanceSummary])
+
+  // Get the latest effective date across all accounts
+  const latestEffectiveDate = useMemo(() => {
+    if (balances.length === 0) return null
+    const dates = balances.map(b => new Date(b.effective_date))
+    const latest = new Date(Math.max(...dates.map(d => d.getTime())))
+    return latest.toISOString().split('T')[0]
+  }, [balances])
 
   return {
     balances,
-    balanceSummary,
+    currentBalanceSummary,
     loading,
     error,
     refresh,
     upsertBalance,
     updateBalance,
     deleteBalance,
-    getExpectedBalance,
-    totals
+    calculateCurrentBalance,
+    totals,
+    latestEffectiveDate
   }
 }
