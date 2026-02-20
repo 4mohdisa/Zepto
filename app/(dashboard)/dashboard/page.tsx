@@ -31,6 +31,9 @@ import {
   CurrentBalanceKPI
 } from './_components'
 
+// Data Generator
+import { RealisticDataButton } from '@/test-data-generator'
+
 const DEFAULT_DATE_RANGE = {
   from: startOfMonth(new Date()),
   to: endOfMonth(new Date())
@@ -141,6 +144,7 @@ export default function DashboardPage() {
 
             {/* Right: Insights (1 col) */}
             <div className="space-y-4 sm:space-y-6">
+              <RealisticDataButton />
               <AccountBalanceSummary />
               <CategoryTrends transactions={chartTransactions} />
               <SpendingInsights transactions={chartTransactions} />

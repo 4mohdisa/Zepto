@@ -14,7 +14,8 @@ import { useRecurringTransactions } from '@/hooks/use-recurring-transactions';
  * <HookBridge />
  * 
  * Then in console run:
- * generateTestData()
+ * populateRealisticData()  - For realistic personal data
+ * generateTestData()       - For random test data
  */
 export function HookBridge() {
   const { createTransaction } = useTransactions();
@@ -28,9 +29,14 @@ export function HookBridge() {
         createRecurringTransaction,
       };
 
-      // Dynamically import browser module
-      import('./browser').then(() => {
-        console.log('🧪 Test Data Generator ready! Run generateTestData() in console');
+      // Dynamically import both browser modules
+      Promise.all([
+        import('./browser'),
+        import('./browser-realistic')
+      ]).then(() => {
+        console.log('🧪 Data Generators ready!');
+        console.log('  populateRealisticData() - Your realistic transaction patterns');
+        console.log('  generateTestData()      - Random test data');
       });
     }
   }, [createTransaction, createRecurringTransaction]);
