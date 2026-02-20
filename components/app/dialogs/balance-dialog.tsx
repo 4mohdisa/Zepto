@@ -13,14 +13,15 @@ import { useAccountBalances } from '@/hooks'
 import { accountTypes, type AccountType } from '@/data/account-types'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Wallet, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Wallet } from 'lucide-react'
 import { formatCurrency } from '@/utils/format'
 import { cn } from '@/lib/utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const formSchema = z.object({
   account_type: z.string().min(1, "Please select an account type"),
-  current_balance: z.coerce.number().min(0, "Balance must be a positive number")
+  current_balance: z.coerce.number().min(0, "Balance must be a positive number"),
+  effective_date: z.string().min(1, "Please select an effective date")
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -36,17 +37,19 @@ export function BalanceDialog({ open, onOpenChange }: BalanceDialogProps) {
   
   const { 
     balances, 
-    balanceSummary, 
+    currentBalanceSummary, 
     upsertBalance, 
     totals,
-    loading 
+    loading,
+    latestEffectiveDate
   } = useAccountBalances()
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: { 
       account_type: '',
-      current_balance: 0 
+      current_balance: 0,
+      effective_date: new Date().toISOString().split('T')[0]
     }
   })
 
@@ -55,7 +58,8 @@ export function BalanceDialog({ open, onOpenChange }: BalanceDialogProps) {
     if (open) {
       form.reset({
         account_type: '',
-        current_balance: 0
+        current_balance: 0,
+        effective_date: new Date().toISOString().split('T')[0]
       })
     }
   }, [open, form])
@@ -65,7 +69,8 @@ export function BalanceDialog({ open, onOpenChange }: BalanceDialogProps) {
     try {
       await upsertBalance({
         account_type: values.account_type as AccountType,
-        current_balance: values.current_balance
+        current_balance: values.current_balance,
+        effective_date: values.effective_date
       })
       form.reset()
       // Don't close dialog so user can see updated summary
@@ -74,18 +79,6 @@ export function BalanceDialog({ open, onOpenChange }: BalanceDialogProps) {
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  const getDifferenceIcon = (difference: number) => {
-    if (difference > 0) return <TrendingUp className="h-4 w-4 text-green-500" />
-    if (difference < 0) return <TrendingDown className="h-4 w-4 text-red-500" />
-    return <Minus className="h-4 w-4 text-gray-500" />
-  }
-
-  const getDifferenceColor = (difference: number) => {
-    if (difference > 0) return "text-green-600 bg-green-50 border-green-200"
-    if (difference < 0) return "text-red-600 bg-red-50 border-red-200"
-    return "text-gray-600 bg-gray-50 border-gray-200"
   }
 
   return (
@@ -129,6 +122,17 @@ export function BalanceDialog({ open, onOpenChange }: BalanceDialogProps) {
                   type="number"
                 />
 
+                <InputField
+                  control={form.control}
+                  name="effective_date"
+                  label="Effective Date (Balance as of this date)"
+                  placeholder="YYYY-MM-DD"
+                  type="date"
+                />
+                <p className="text-xs text-muted-foreground -mt-3">
+                  Transactions after this date will affect your balance. Transactions before this date won't.
+                </p>
+
                 {/* Show existing balance for selected account type */}
                 {form.watch('account_type') && (
                   <div className="p-3 bg-muted rounded-lg">
@@ -139,7 +143,7 @@ export function BalanceDialog({ open, onOpenChange }: BalanceDialogProps) {
                       const existingBalance = balances.find(
                         b => b.account_type === form.watch('account_type')
                       )
-                      const summary = balanceSummary.find(
+                      const summary = currentBalanceSummary.find(
                         s => s.account_type === form.watch('account_type')
                       )
                       
@@ -149,18 +153,13 @@ export function BalanceDialog({ open, onOpenChange }: BalanceDialogProps) {
                             <p className="text-lg font-semibold">
                               {formatCurrency(Number(existingBalance.current_balance))}
                             </p>
+                            <p className="text-xs text-muted-foreground">
+                              Effective from: {new Date(existingBalance.effective_date).toLocaleDateString()}
+                            </p>
                             {summary && (
-                              <div className="flex items-center gap-2 text-sm">
-                                <span className="text-muted-foreground">
-                                  Expected: {formatCurrency(Number(summary.expected_balance))}
-                                </span>
-                                <Badge variant="outline" className={cn("text-xs", getDifferenceColor(Number(summary.difference)))}>
-                                  {getDifferenceIcon(Number(summary.difference))}
-                                  <span className="ml-1">
-                                    {Number(summary.difference) > 0 ? '+' : ''}
-                                    {formatCurrency(Number(summary.difference))}
-                                  </span>
-                                </Badge>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Current: {formatCurrency(summary.current_balance)} 
+                                (Started: {formatCurrency(summary.starting_balance)})
                               </div>
                             )}
                           </div>
@@ -172,7 +171,7 @@ export function BalanceDialog({ open, onOpenChange }: BalanceDialogProps) {
                           <div className="space-y-1">
                             <p className="text-muted-foreground">Not recorded yet</p>
                             <p className="text-sm text-muted-foreground">
-                              Expected from transactions: {formatCurrency(Number(summary.expected_balance))}
+                              Current calculated: {formatCurrency(summary.current_balance)}
                             </p>
                           </div>
                         )
@@ -180,7 +179,7 @@ export function BalanceDialog({ open, onOpenChange }: BalanceDialogProps) {
                       
                       return (
                         <p className="text-muted-foreground">
-                          No transactions recorded for this account type
+                          No balance recorded for this account type
                         </p>
                       )
                     })()}
@@ -210,11 +209,10 @@ export function BalanceDialog({ open, onOpenChange }: BalanceDialogProps) {
           </TabsContent>
 
           <TabsContent value="summary" className="space-y-4 mt-4">
-            {balanceSummary.length > 0 ? (
+            {currentBalanceSummary.length > 0 ? (
               <div className="space-y-3">
-                {balanceSummary.map((summary) => {
+                {currentBalanceSummary.map((summary) => {
                   const balance = balances.find(b => b.account_type === summary.account_type)
-                  const difference = Number(summary.difference)
                   
                   return (
                     <Card key={summary.account_type} className="border-border">
@@ -224,21 +222,22 @@ export function BalanceDialog({ open, onOpenChange }: BalanceDialogProps) {
                             <h4 className="font-semibold text-foreground">{summary.account_type}</h4>
                             <div className="mt-1 space-y-1">
                               <p className="text-sm text-muted-foreground">
-                                Expected: {formatCurrency(Number(summary.expected_balance))}
+                                Effective from: {new Date(summary.effective_date).toLocaleDateString()}
                               </p>
-                              <p className="text-sm text-muted-foreground">
-                                Actual: {formatCurrency(Number(summary.actual_balance))}
+                              <p className="text-xs text-muted-foreground">
+                                Started: {formatCurrency(summary.starting_balance)} | 
+                                Income: +{formatCurrency(summary.income_after)} | 
+                                Expenses: -{formatCurrency(summary.expenses_after)}
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <Badge className={cn("text-sm px-3 py-1", getDifferenceColor(difference))}>
-                              {getDifferenceIcon(difference)}
-                              <span className="ml-1">
-                                {difference > 0 ? '+' : ''}
-                                {formatCurrency(difference)}
-                              </span>
-                            </Badge>
+                            <p className={cn(
+                              "text-lg font-semibold",
+                              summary.current_balance >= 0 ? "text-green-600" : "text-red-600"
+                            )}>
+                              {formatCurrency(summary.current_balance)}
+                            </p>
                             {balance && (
                               <p className="text-xs text-muted-foreground mt-1">
                                 Updated: {new Date(balance.last_updated).toLocaleDateString()}
@@ -257,28 +256,29 @@ export function BalanceDialog({ open, onOpenChange }: BalanceDialogProps) {
                     <CardTitle className="text-lg">Total Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="pt-0">
-                    <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="grid grid-cols-4 gap-4 text-center">
                       <div>
-                        <p className="text-sm text-muted-foreground">Expected</p>
+                        <p className="text-sm text-muted-foreground">Starting</p>
                         <p className="text-lg font-semibold">
-                          {formatCurrency(totals.totalExpected)}
+                          {formatCurrency(totals.totalStartingBalance)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Actual</p>
-                        <p className="text-lg font-semibold">
-                          {formatCurrency(totals.totalActual)}
+                        <p className="text-sm text-muted-foreground">Income</p>
+                        <p className="text-lg font-semibold text-green-600">
+                          +{formatCurrency(totals.totalIncome)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Difference</p>
-                        <p className={cn(
-                          "text-lg font-semibold",
-                          totals.totalDifference > 0 ? "text-green-600" : 
-                          totals.totalDifference < 0 ? "text-red-600" : "text-gray-600"
-                        )}>
-                          {totals.totalDifference > 0 ? '+' : ''}
-                          {formatCurrency(totals.totalDifference)}
+                        <p className="text-sm text-muted-foreground">Expenses</p>
+                        <p className="text-lg font-semibold text-red-600">
+                          -{formatCurrency(totals.totalExpenses)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Current</p>
+                        <p className="text-lg font-semibold text-primary">
+                          {formatCurrency(totals.totalCurrentBalance)}
                         </p>
                       </div>
                     </div>

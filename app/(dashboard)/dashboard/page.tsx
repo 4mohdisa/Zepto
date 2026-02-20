@@ -27,7 +27,8 @@ import {
   SpendingInsights,
   MonthlyComparison,
   CategoryTrends,
-  AccountBalanceSummary
+  AccountBalanceSummary,
+  CurrentBalanceKPI
 } from './_components'
 
 const DEFAULT_DATE_RANGE = {
@@ -111,6 +112,11 @@ export default function DashboardPage() {
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
         />
+
+        {/* Current Balance KPI - Big Display */}
+        <div className="mt-6">
+          <CurrentBalanceKPI />
+        </div>
 
         {/* Stats Overview */}
         <ErrorBoundaryWrapper>

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Wallet, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, Calendar } from 'lucide-react'
 import { formatCurrency } from "@/utils/format"
 import { cn } from "@/lib/utils"
 import { useAccountBalances } from "@/hooks/use-account-balances"
@@ -13,7 +13,7 @@ interface AccountBalanceSummaryProps {
 }
 
 export function AccountBalanceSummary({ className }: AccountBalanceSummaryProps) {
-  const { balanceSummary, totals, loading } = useAccountBalances()
+  const { currentBalanceSummary, totals, loading } = useAccountBalances()
 
   if (loading) {
     return (
@@ -34,7 +34,7 @@ export function AccountBalanceSummary({ className }: AccountBalanceSummaryProps)
     )
   }
 
-  if (balanceSummary.length === 0) {
+  if (currentBalanceSummary.length === 0) {
     return (
       <Card className={cn("border-gray-200 shadow-sm", className)}>
         <CardHeader className="pb-2">
@@ -52,18 +52,6 @@ export function AccountBalanceSummary({ className }: AccountBalanceSummaryProps)
     )
   }
 
-  const getDifferenceIcon = (difference: number) => {
-    if (difference > 0) return <TrendingUp className="h-3 w-3 text-green-500" />
-    if (difference < 0) return <TrendingDown className="h-3 w-3 text-red-500" />
-    return <Minus className="h-3 w-3 text-gray-500" />
-  }
-
-  const getDifferenceColor = (difference: number) => {
-    if (difference > 0) return "text-green-600 bg-green-50 border-green-200"
-    if (difference < 0) return "text-red-600 bg-red-50 border-red-200"
-    return "text-gray-600 bg-gray-50 border-gray-200"
-  }
-
   return (
     <Card className={cn("border-gray-200 shadow-sm", className)}>
       <CardHeader className="pb-2">
@@ -74,8 +62,7 @@ export function AccountBalanceSummary({ className }: AccountBalanceSummaryProps)
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-3">
-          {balanceSummary.map((summary) => {
-            const difference = Number(summary.difference)
+          {currentBalanceSummary.map((summary) => {
             return (
               <div 
                 key={summary.account_type} 
@@ -83,24 +70,34 @@ export function AccountBalanceSummary({ className }: AccountBalanceSummaryProps)
               >
                 <div>
                   <p className="font-medium text-sm">{summary.account_type}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Expected: {formatCurrency(Number(summary.expected_balance))}
-                  </p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    <Calendar className="h-3 w-3" />
+                    From {new Date(summary.effective_date).toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric' 
+                    })}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs mt-1">
+                    <span className="text-green-600 flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3" />
+                      +{formatCurrency(summary.income_after)}
+                    </span>
+                    <span className="text-red-600 flex items-center gap-1">
+                      <TrendingDown className="h-3 w-3" />
+                      -{formatCurrency(summary.expenses_after)}
+                    </span>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-sm">
-                    {formatCurrency(Number(summary.actual_balance))}
+                  <p className={cn(
+                    "font-semibold text-sm",
+                    summary.current_balance >= 0 ? "text-green-600" : "text-red-600"
+                  )}>
+                    {formatCurrency(summary.current_balance)}
                   </p>
-                  <Badge 
-                    variant="outline" 
-                    className={cn("text-xs mt-1", getDifferenceColor(difference))}
-                  >
-                    {getDifferenceIcon(difference)}
-                    <span className="ml-1">
-                      {difference > 0 ? '+' : ''}
-                      {formatCurrency(difference)}
-                    </span>
-                  </Badge>
+                  <p className="text-xs text-muted-foreground">
+                    Started: {formatCurrency(summary.starting_balance)}
+                  </p>
                 </div>
               </div>
             )
@@ -109,16 +106,18 @@ export function AccountBalanceSummary({ className }: AccountBalanceSummaryProps)
           {/* Total */}
           <div className="pt-2 border-t border-border">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-sm">Total Actual</span>
+              <span className="font-semibold text-sm">Total Current Balance</span>
               <span className="font-bold text-lg text-primary">
-                {formatCurrency(totals.totalActual)}
+                {formatCurrency(totals.totalCurrentBalance)}
               </span>
             </div>
-            <div className="flex items-center justify-between mt-1">
-              <span className="text-xs text-muted-foreground">Total Expected (from transactions)</span>
-              <span className="text-sm text-muted-foreground">
-                {formatCurrency(totals.totalExpected)}
-              </span>
+            <div className="grid grid-cols-2 gap-2 mt-2 text-xs text-muted-foreground">
+              <div>
+                <span className="text-green-600">+{formatCurrency(totals.totalIncome)}</span> income
+              </div>
+              <div>
+                <span className="text-red-600">-{formatCurrency(totals.totalExpenses)}</span> expenses
+              </div>
             </div>
           </div>
         </div>

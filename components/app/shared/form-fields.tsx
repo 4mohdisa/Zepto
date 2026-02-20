@@ -32,7 +32,7 @@ interface BaseFieldProps<T extends FieldValues> {
 
 interface InputFieldProps<T extends FieldValues> extends BaseFieldProps<T> {
   placeholder?: string
-  type?: 'text' | 'number' | 'email' | 'password'
+  type?: 'text' | 'number' | 'email' | 'password' | 'date'
 }
 
 export function InputField<T extends FieldValues>({
