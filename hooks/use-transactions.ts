@@ -48,7 +48,12 @@ export function useTransactions(dateRange?: DateRange) {
   useEffect(() => {
     async function fetchTransactions() {
       const currentUser = userRef.current
-      if (!currentUser?.id) return
+      if (!currentUser?.id) {
+        console.log('[useTransactions] No user, skipping fetch')
+        return
+      }
+
+      console.info('[useTransactions] Fetching for user:', currentUser.id.substring(0, 12) + '...')
 
       try {
         setLoading(true)
@@ -73,7 +78,10 @@ export function useTransactions(dateRange?: DateRange) {
 
         const { data, error } = await query as { data: TransactionWithCategory[] | null, error: unknown }
 
-        if (error) throw error
+        if (error) {
+          console.error('[useTransactions] Database error:', error)
+          throw error
+        }
 
         const processedTransactions = (data || []).map(transaction => ({
           id: transaction.id,
@@ -91,9 +99,14 @@ export function useTransactions(dateRange?: DateRange) {
           updated_at: transaction.updated_at
         }))
 
+        console.info('[useTransactions] Fetched transactions:', processedTransactions.length)
         setTransactions(processedTransactions as Transaction[])
       } catch (err) {
-        console.error('Error fetching transactions:', err)
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch transactions'
+        console.error('[useTransactions] Error fetching transactions:', {
+          error: errorMessage,
+          userId: currentUser.id.substring(0, 12) + '...'
+        })
         setError(err instanceof Error ? err : new Error('Failed to fetch transactions'))
       } finally {
         setLoading(false)
