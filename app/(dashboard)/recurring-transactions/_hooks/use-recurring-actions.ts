@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { RecurringTransaction, Transaction } from "@/app/types/transaction"
 
 interface UseRecurringActionsProps {
@@ -18,10 +18,23 @@ export function useRecurringActions({
   bulkUpdateRecurringTransactions,
   onOpenAddDialog
 }: UseRecurringActionsProps) {
+  // Track if component is mounted
+  const isMounted = useRef(false)
+  
+  useEffect(() => {
+    isMounted.current = true
+    return () => {
+      isMounted.current = false
+    }
+  }, [])
+
   // Listen for header event to open add dialog
   useEffect(() => {
     const handleHeaderAddRecurringTransaction = () => {
-      onOpenAddDialog()
+      // Only call if component is still mounted
+      if (isMounted.current) {
+        onOpenAddDialog()
+      }
     }
 
     window.addEventListener('header:addrecurringtransaction', handleHeaderAddRecurringTransaction)

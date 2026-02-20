@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTransactions } from '@/hooks/use-transactions';
 import { useRecurringTransactions } from '@/hooks/use-recurring-transactions';
 import { autoPopulateData, getErrorLogs, getSuccessLogs, clearLogs } from './auto-populate';
@@ -24,8 +24,12 @@ export function AutoRunDataPopulation() {
   const { createRecurringTransaction } = useRecurringTransactions();
   const [status, setStatus] = useState<'idle' | 'running' | 'complete' | 'error'>('idle');
   const [progress, setProgress] = useState(0);
+  const isMounted = useRef(false);
 
   useEffect(() => {
+    // Mark as mounted
+    isMounted.current = true;
+    
     // Only run in development
     if (process.env.NODE_ENV === 'production') {
       console.log('🚫 Auto-population disabled in production');
@@ -39,11 +43,20 @@ export function AutoRunDataPopulation() {
     }
 
     const runPopulation = async () => {
+      // Wait for next tick to ensure component is fully mounted
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check if still mounted
+      if (!isMounted.current) return;
+      
       setStatus('running');
       console.log('🚀 Starting automatic data population...');
       
       try {
         await autoPopulateData(createTransaction, createRecurringTransaction);
+        
+        // Check if still mounted before updating state
+        if (!isMounted.current) return;
         
         // Mark as populated
         if (typeof window !== 'undefined') {
@@ -55,17 +68,26 @@ export function AutoRunDataPopulation() {
         
         // Show completion alert
         setTimeout(() => {
-          alert('✅ Data population complete! Refresh the page to see all transactions.');
+          if (isMounted.current) {
+            alert('✅ Data population complete! Refresh the page to see all transactions.');
+          }
         }, 1000);
         
       } catch (error) {
         console.error('❌ Auto-population failed:', error);
-        setStatus('error');
+        if (isMounted.current) {
+          setStatus('error');
+        }
       }
     };
 
-    // Run immediately
-    runPopulation();
+    // Run after a short delay to ensure component is mounted
+    const timeoutId = setTimeout(runPopulation, 500);
+    
+    return () => {
+      isMounted.current = false;
+      clearTimeout(timeoutId);
+    };
   }, [createTransaction, createRecurringTransaction]);
 
   // Don't render anything
