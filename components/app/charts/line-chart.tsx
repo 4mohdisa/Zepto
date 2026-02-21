@@ -16,7 +16,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart"
-import { format, parseISO, eachDayOfInterval } from 'date-fns'
+import { format, eachDayOfInterval } from 'date-fns'
 import { formatCurrency } from '@/utils/format'
 
 interface Transaction {
@@ -42,10 +42,19 @@ const processTransactions = (transactions: Transaction[]): DailyBalance[] => {
     return [];
   }
 
-  // Get date range from transactions
-  const dates = transactions.map(t => parseISO(t.date)).sort((a, b) => a.getTime() - b.getTime());
-  const startDate = dates[0];
-  const endDate = dates[dates.length - 1];
+  // Get unique dates and sort them (string comparison works for YYYY-MM-DD)
+  const uniqueDates = Array.from(new Set(transactions.map(t => t.date))).sort();
+  const startDateStr = uniqueDates[0];
+  const endDateStr = uniqueDates[uniqueDates.length - 1];
+  
+  // Parse dates as local time to avoid timezone issues
+  const parseLocalDate = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+  
+  const startDate = parseLocalDate(startDateStr);
+  const endDate = parseLocalDate(endDateStr);
   
   // Generate all days in the range
   const allDays = eachDayOfInterval({ start: startDate, end: endDate });

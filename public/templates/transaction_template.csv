@@ -1,0 +1,13 @@
+Date,Description,Amount,Type,Category
+2026-01-15,Employer Payrun,1800.00,Income,Salary
+2026-01-15,Whole Foods Market,156.78,Expense,Food
+2026-01-14,Shell Gas Station,65.43,Expense,Transport
+2026-01-14,Netflix Subscription,15.99,Expense,Entertainment
+2026-01-13,Starbucks Coffee,7.85,Expense,Coffee
+2026-01-12,Uber Ride,24.50,Expense,Transport
+2026-01-10,Electric Bill,145.67,Expense,Utilities
+2026-01-08,Grocery Store,89.56,Expense,Groceries
+2026-01-05,Monthly Rent,2200.00,Expense,Housing
+2026-01-03,Gym Membership,49.99,Expense,Health
+2026-01-02,Internet Bill,79.99,Expense,Utilities
+2026-01-01,Amazon Purchase,134.22,Expense,Shopping

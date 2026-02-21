@@ -26,18 +26,26 @@ export function MonthlyComparison({ transactions = [] }: MonthlyComparisonProps)
     const currentMonth = currentDate.getMonth()
     const currentYear = currentDate.getFullYear()
 
+    // Parse date parts to avoid timezone issues
+    const parseDateParts = (dateStr: string) => {
+      const parts = dateStr.split('-').map(Number)
+      return { year: parts[0], month: parts[1] - 1 } // month is 0-indexed
+    }
+
     // Current month
     const currentMonthTransactions = transactions.filter(t => {
-      const date = new Date(t.date || '')
-      return date.getMonth() === currentMonth && date.getFullYear() === currentYear
+      if (!t.date) return false
+      const { year, month } = parseDateParts(String(t.date))
+      return month === currentMonth && year === currentYear
     })
 
     // Previous month
     const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1
     const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear
     const prevMonthTransactions = transactions.filter(t => {
-      const date = new Date(t.date || '')
-      return date.getMonth() === prevMonth && date.getFullYear() === prevYear
+      if (!t.date) return false
+      const { year, month } = parseDateParts(String(t.date))
+      return month === prevMonth && year === prevYear
     })
 
     const currentIncome = currentMonthTransactions

@@ -208,6 +208,7 @@ export default function DashboardPage() {
       <UploadDialog
         open={isUploadFileOpen}
         onOpenChange={setIsUploadFileOpen}
+        onSuccess={refreshTransactions}
       />
     </div>
   )

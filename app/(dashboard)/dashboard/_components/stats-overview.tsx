@@ -110,10 +110,15 @@ export const StatsOverview = React.memo(function StatsOverview({
     const currentMonth = currentDate.getMonth()
     const currentYear = currentDate.getFullYear()
     
+    // Parse date parts to avoid timezone issues
+    const parseDateParts = (dateStr: string) => {
+      const parts = dateStr.split('-').map(Number)
+      return { year: parts[0], month: parts[1] - 1 } // month is 0-indexed
+    }
+
     const previousMonthTransactions = transactions.filter(t => {
-      const transactionDate = new Date(t.date || '')
-      const transactionMonth = transactionDate.getMonth()
-      const transactionYear = transactionDate.getFullYear()
+      if (!t.date) return false
+      const { year: transactionYear, month: transactionMonth } = parseDateParts(String(t.date))
       
       if (currentMonth === 0) {
         return transactionMonth === 11 && transactionYear === currentYear - 1

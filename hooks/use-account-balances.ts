@@ -274,7 +274,20 @@ export function useAccountBalances() {
   // Get the latest effective date across all accounts
   const latestEffectiveDate = useMemo(() => {
     if (balances.length === 0) return null
-    const dates = balances.map(b => new Date(b.effective_date || b.last_updated))
+    // Parse dates as local time to avoid timezone issues
+    const parseLocalDate = (dateStr: string) => {
+      const [year, month, day] = dateStr.split('-').map(Number)
+      return new Date(year, month - 1, day)
+    }
+    const dates = balances.map(b => {
+      const dateStr = b.effective_date || b.last_updated?.split('T')[0]
+      if (!dateStr) return new Date(0)
+      // If it's already YYYY-MM-DD format, parse as local
+      if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return parseLocalDate(dateStr)
+      }
+      return new Date(dateStr)
+    })
     const latest = new Date(Math.max(...dates.map(d => d.getTime())))
     return latest.toISOString().split('T')[0]
   }, [balances])
