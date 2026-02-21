@@ -32,19 +32,39 @@ interface TransactionChartProps {
   chartType?: 'bar' | 'line';
 }
 
+// Process transactions data - aggregate by date for each metric
 const processChartData = (transactions: Transaction[], metrics: { key: string; label: string; color: string }[]) => {
-  const data = transactions.map(transaction => {
-    const dataPoint: { [key: string]: any } = { date: transaction.date };
-    metrics.forEach(metric => {
-      dataPoint[metric.key] = 0;
-    });
+  if (!transactions || transactions.length === 0) {
+    return [];
+  }
+
+  // Group transactions by date
+  const groupedByDate = transactions.reduce((acc, transaction) => {
+    const date = transaction.date;
+    if (!acc[date]) {
+      acc[date] = {};
+      metrics.forEach(metric => {
+        acc[date][metric.key] = 0;
+      });
+    }
+    
+    // Add amount to the appropriate metric based on transaction type
     metrics.forEach(metric => {
       if (transaction.type?.toLowerCase() === metric.key.toLowerCase()) {
-        dataPoint[metric.key] += transaction.amount;
+        acc[date][metric.key] += transaction.amount;
       }
     });
-    return dataPoint;
-  });
+    
+    return acc;
+  }, {} as Record<string, { [key: string]: number }>);
+
+  // Convert to array and sort by date (string comparison works for YYYY-MM-DD)
+  const data = Object.entries(groupedByDate)
+    .map(([date, values]) => ({
+      date,
+      ...values
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   return data;
 };
@@ -119,7 +139,7 @@ export function TransactionChart({
     }
     return metrics.reduce((acc, metric) => ({
       ...acc,
-      [metric.key]: chartData.reduce((sum, curr) => sum + (curr[metric.key] || 0), 0),
+      [metric.key]: chartData.reduce((sum, curr) => sum + ((curr as any)[metric.key] || 0), 0),
     }), {} as ChartTotals);
   }, [chartData, metrics]);
 

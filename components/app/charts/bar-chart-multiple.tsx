@@ -17,7 +17,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, eachMonthOfInterval, isSameMonth } from 'date-fns';
+
 
 interface Transaction {
   date: string;
@@ -48,17 +48,22 @@ const processMonthlyData = (transactions: Transaction[]) => {
     return [];
   }
 
-  // Get date range from transactions
-  const dates = transactions.map(t => parseISO(t.date)).sort((a, b) => a.getTime() - b.getTime());
-  const startDate = startOfMonth(dates[0]);
-  const endDate = endOfMonth(dates[dates.length - 1]);
+  // Get unique year-month combinations from transactions
+  const yearMonthSet = new Set<string>();
+  transactions.forEach(t => {
+    if (t.date) {
+      // Extract YYYY-MM from date string
+      yearMonthSet.add(t.date.substring(0, 7));
+    }
+  });
   
-  // Generate all months in the range
-  const months = eachMonthOfInterval({ start: startDate, end: endDate });
+  // Sort year-month strings (YYYY-MM format sorts correctly)
+  const sortedYearMonths = Array.from(yearMonthSet).sort();
   
-  return months.map(month => {
+  return sortedYearMonths.map(yearMonth => {
+    // Filter transactions for this month
     const monthTransactions = transactions.filter(t => 
-      isSameMonth(parseISO(t.date), month)
+      t.date && t.date.startsWith(yearMonth)
     );
     
     const income = monthTransactions
@@ -69,8 +74,13 @@ const processMonthlyData = (transactions: Transaction[]) => {
       .filter(t => t.type === 'Expense')
       .reduce((sum, t) => sum + (parseFloat(String(t.amount)) || 0), 0);
     
+    // Format month name from YYYY-MM
+    const [year, month] = yearMonth.split('-').map(Number);
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                       'July', 'August', 'September', 'October', 'November', 'December'];
+    
     return {
-      month: format(month, 'MMMM'),
+      month: monthNames[month - 1],
       income,
       expenses
     };

@@ -30,14 +30,21 @@ export function CategoryTrends({ transactions = [] }: CategoryTrendsProps) {
     const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1
     const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear
 
+    // Parse date parts to avoid timezone issues
+    const parseDateParts = (dateStr: string) => {
+      const parts = dateStr.split('-').map(Number)
+      return { year: parts[0], month: parts[1] - 1 } // month is 0-indexed
+    }
+
     // Current month spending by category
     const currentMonthCategories: Record<string, number> = {}
     transactions
       .filter(t => {
-        const date = new Date(t.date || '')
+        if (!t.date) return false
+        const { year, month } = parseDateParts(String(t.date))
         return t.type === 'Expense' && 
-               date.getMonth() === currentMonth && 
-               date.getFullYear() === currentYear
+               month === currentMonth && 
+               year === currentYear
       })
       .forEach(t => {
         const category = t.category_name || 'Uncategorized'
@@ -48,10 +55,11 @@ export function CategoryTrends({ transactions = [] }: CategoryTrendsProps) {
     const prevMonthCategories: Record<string, number> = {}
     transactions
       .filter(t => {
-        const date = new Date(t.date || '')
+        if (!t.date) return false
+        const { year, month } = parseDateParts(String(t.date))
         return t.type === 'Expense' && 
-               date.getMonth() === prevMonth && 
-               date.getFullYear() === prevYear
+               month === prevMonth && 
+               year === prevYear
       })
       .forEach(t => {
         const category = t.category_name || 'Uncategorized'

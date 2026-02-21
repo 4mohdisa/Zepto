@@ -3,12 +3,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency } from '@/utils/format'
 import { Wallet, TrendingUp, TrendingDown, Calendar } from 'lucide-react'
-import { useAccountBalances } from '@/hooks/use-account-balances'
+import { useCurrentBalance } from '@/hooks/use-current-balance'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
 export function CurrentBalanceKPI() {
-  const { currentBalanceSummary, totals, latestEffectiveDate, loading } = useAccountBalances()
+  const { balanceSummary, totals, loading } = useCurrentBalance()
 
   if (loading) {
     return (
@@ -31,7 +31,7 @@ export function CurrentBalanceKPI() {
     )
   }
 
-  const hasBalances = currentBalanceSummary.length > 0
+  const hasBalances = balanceSummary.length > 0
 
   return (
     <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
@@ -44,11 +44,7 @@ export function CurrentBalanceKPI() {
             <div>
               <CardTitle className="text-lg font-semibold">Current Balance</CardTitle>
               <p className="text-sm text-muted-foreground">
-                As of {latestEffectiveDate ? new Date(latestEffectiveDate).toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric', 
-                  year: 'numeric' 
-                }) : 'today'}
+                Updates automatically with transactions
               </p>
             </div>
           </div>
@@ -61,14 +57,14 @@ export function CurrentBalanceKPI() {
             {formatCurrency(totals.totalCurrentBalance)}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
-            Across {currentBalanceSummary.length} account{currentBalanceSummary.length !== 1 ? 's' : ''}
+            Across {balanceSummary.length} account{balanceSummary.length !== 1 ? 's' : ''}
           </p>
         </div>
 
         {/* Account Breakdown */}
         {hasBalances ? (
           <div className="space-y-3 mt-4">
-            {currentBalanceSummary.map((account) => (
+            {balanceSummary.map((account) => (
               <div 
                 key={account.account_type} 
                 className="flex items-center justify-between p-3 rounded-lg bg-background/50 border"
