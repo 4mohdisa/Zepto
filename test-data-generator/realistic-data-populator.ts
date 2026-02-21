@@ -532,10 +532,50 @@ export async function generateRealisticData(
     .filter(t => t.type === 'Expense')
     .reduce((sum, t) => sum + t.amount, 0);
   
+  // ============================================
+  // CREATE RECURRING TRANSACTIONS
+  // ============================================
+  
+  let recurringCreatedCount = 0;
+  
+  if (createRecurringTransaction) {
+    console.log('🔄 Creating recurring transactions...');
+    
+    const recurringDefinitions = [
+      { name: 'Employer Payrun', amount: 1800, type: 'Income', category: 'Salary', frequency: 'Weekly', account_type: 'Checking' },
+      { name: 'Transfer to NetBank SAVINGS', amount: 200, type: 'Expense', category: 'Savings', frequency: 'Weekly', account_type: 'Checking' },
+      { name: 'OpenAI ChatGPT', amount: 30, type: 'Expense', category: 'Subscriptions', frequency: 'Monthly', account_type: 'Credit Card' },
+      { name: 'GitHub', amount: 6, type: 'Expense', category: 'Subscriptions', frequency: 'Monthly', account_type: 'Credit Card' },
+      { name: 'Apple Services', amount: 15, type: 'Expense', category: 'Subscriptions', frequency: 'Monthly', account_type: 'Credit Card' },
+      { name: 'JB HiFi Mobile', amount: 89, type: 'Expense', category: 'Subscriptions', frequency: 'Monthly', account_type: 'Credit Card' },
+      { name: 'Bupa Insurance', amount: 99.88, type: 'Expense', category: 'Subscriptions', frequency: 'Monthly', account_type: 'Credit Card' },
+      { name: 'Resume.io', amount: 20, type: 'Expense', category: 'Subscriptions', frequency: 'Monthly', account_type: 'Credit Card' },
+    ];
+    
+    for (const recurring of recurringDefinitions) {
+      try {
+        await createRecurringTransaction({
+          name: recurring.name,
+          amount: recurring.amount,
+          type: recurring.type,
+          account_type: recurring.account_type,
+          category_name: recurring.category,
+          frequency: recurring.frequency,
+          start_date: '2025-07-01',
+          description: `Recurring ${recurring.frequency.toLowerCase()} ${recurring.type.toLowerCase()}`
+        });
+        recurringCreatedCount++;
+      } catch (error) {
+        console.error(`Failed to create recurring: ${recurring.name}`, error);
+      }
+    }
+  }
+  
   console.log('═══════════════════════════════════════════');
   console.log('📊 REALISTIC DATA POPULATION COMPLETE');
   console.log('═══════════════════════════════════════════');
   console.log(`Total Transactions: ${createdCount}`);
+  console.log(`Recurring Transactions: ${recurringCreatedCount}`);
   console.log(`Failed: ${errorCount}`);
   console.log(`Total Income: $${totalIncome.toFixed(2)}`);
   console.log(`Total Expenses: $${totalExpenses.toFixed(2)}`);

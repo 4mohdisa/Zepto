@@ -62,31 +62,45 @@ class TransactionService {
       
       // If category_name is provided but not category_id, look up or create category
       if (!categoryId && data.category_name) {
-        // Try to find existing category
-        const { data: existingCategory, error: lookupError } = await this.supabase
-          .from("categories")
-          .select("id")
-          .ilike("name", data.category_name)
-          .single();
+        console.log(`[TransactionService] Looking up category: ${data.category_name}`);
         
-        if (existingCategory) {
-          categoryId = existingCategory.id;
+        // Try to find existing category - use maybeSingle() instead of single() to avoid errors
+        const { data: existingCategories, error: lookupError } = await this.supabase
+          .from("categories")
+          .select("id, name")
+          .ilike("name", data.category_name)
+          .limit(1);
+        
+        if (lookupError) {
+          console.error(`[TransactionService] Category lookup error:`, lookupError);
+        }
+        
+        if (existingCategories && existingCategories.length > 0) {
+          categoryId = existingCategories[0].id;
+          console.log(`[TransactionService] Found existing category: ${data.category_name} = ID ${categoryId}`);
         } else {
           // Create new category
+          console.log(`[TransactionService] Creating new category: ${data.category_name}`);
           const { data: newCategory, error: createError } = await this.supabase
             .from("categories")
             .insert({ name: data.category_name })
             .select("id")
             .single();
           
+          if (createError) {
+            console.error(`[TransactionService] Failed to create category:`, createError);
+          }
+          
           if (newCategory) {
             categoryId = newCategory.id;
+            console.log(`[TransactionService] Created new category: ${data.category_name} = ID ${categoryId}`);
           }
         }
       }
       
       // Default to category 1 if still no category
       if (!categoryId) {
+        console.log(`[TransactionService] No category found, defaulting to ID 1 (Housing)`);
         categoryId = 1;
       }
 
