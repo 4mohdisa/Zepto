@@ -60,48 +60,82 @@ class TransactionService {
       // Handle category - either by ID or by name
       let categoryId = data.category_id ? Number(data.category_id) : null;
       
-      // If category_name is provided but not category_id, look up or create category
+      // If category_name is provided but not category_id, look up existing category
       if (!categoryId && data.category_name) {
         console.log(`[TransactionService] Looking up category: ${data.category_name}`);
         
-        // Try to find existing category - use maybeSingle() instead of single() to avoid errors
+        // Map common category names to standard ones
+        const categoryMapping: Record<string, string[]> = {
+          'Salary': ['Salary', 'Income', 'Wages'],
+          'Freelance': ['Freelance', 'Side Income', 'Contract Work'],
+          'Other Income': ['Other Income', 'Transfer', 'Misc Income'],
+          'Housing': ['Housing', 'Rent', 'Mortgage'],
+          'Food': ['Food', 'Groceries', 'Dining', 'Lunch', 'Restaurant'],
+          'Transport': ['Transport', 'Fuel', 'Gas', 'Uber', 'Parking', 'Car'],
+          'Entertainment': ['Entertainment', 'Shisha', 'Fun', 'Recreation'],
+          'Shopping': ['Shopping', 'Clothing', 'Electronics', 'Retail'],
+          'Utilities': ['Utilities', 'Bills', 'Electric', 'Internet'],
+          'Subscriptions': ['Subscriptions', 'Software', 'Services'],
+          'Health': ['Health', 'Insurance', 'Medical', 'Gym'],
+          'Savings': ['Savings', 'Transfer Out', 'Investment'],
+          'Debt Repayment': ['Debt Repayment', 'Loan Payment', 'StepPay'],
+          'Charity': ['Charity', 'Donation', 'Sadaqa'],
+          'Services': ['Services', 'Laundry', 'Cleaning'],
+          'Education': ['Education', 'Course', 'Learning'],
+          'Other': ['Other', 'Misc', 'Miscellaneous']
+        };
+        
+        // Find matching standard category
+        let searchTerm = data.category_name;
+        for (const [standard, variants] of Object.entries(categoryMapping)) {
+          if (variants.some(v => data.category_name?.toLowerCase().includes(v.toLowerCase()))) {
+            searchTerm = standard;
+            break;
+          }
+        }
+        
+        // Try to find existing category (default or user-created)
         const { data: existingCategories, error: lookupError } = await this.supabase
           .from("categories")
           .select("id, name")
-          .ilike("name", data.category_name)
-          .limit(1);
+          .ilike("name", `%${searchTerm}%`)
+          .limit(5);
         
         if (lookupError) {
           console.error(`[TransactionService] Category lookup error:`, lookupError);
         }
         
         if (existingCategories && existingCategories.length > 0) {
-          categoryId = existingCategories[0].id;
-          console.log(`[TransactionService] Found existing category: ${data.category_name} = ID ${categoryId}`);
+          // Find best match
+          const bestMatch = existingCategories.find(c => 
+            c.name.toLowerCase() === searchTerm.toLowerCase()
+          ) || existingCategories[0];
+          
+          categoryId = bestMatch.id;
+          console.log(`[TransactionService] Found category: ${data.category_name} → ${bestMatch.name} (ID ${categoryId})`);
         } else {
-          // Create new category
-          console.log(`[TransactionService] Creating new category: ${data.category_name}`);
-          const { data: newCategory, error: createError } = await this.supabase
-            .from("categories")
-            .insert({ name: data.category_name })
-            .select("id")
-            .single();
-          
-          if (createError) {
-            console.error(`[TransactionService] Failed to create category:`, createError);
-          }
-          
-          if (newCategory) {
-            categoryId = newCategory.id;
-            console.log(`[TransactionService] Created new category: ${data.category_name} = ID ${categoryId}`);
-          }
+          // Fallback: try to get any category
+          console.log(`[TransactionService] No category found for '${data.category_name}', using default lookup`);
         }
       }
       
-      // Default to category 1 if still no category
+      // If still no category, try to get first available category
       if (!categoryId) {
-        console.log(`[TransactionService] No category found, defaulting to ID 1 (Housing)`);
-        categoryId = 1;
+        console.log(`[TransactionService] No category matched, fetching first available...`);
+        
+        const { data: firstCategory } = await this.supabase
+          .from("categories")
+          .select("id, name")
+          .limit(1)
+          .single();
+        
+        if (firstCategory) {
+          categoryId = firstCategory.id;
+          console.log(`[TransactionService] Using first available category: ${firstCategory.name} (ID ${categoryId})`);
+        } else {
+          console.error(`[TransactionService] No categories found in database!`);
+          categoryId = 1; // Last resort fallback
+        }
       }
 
       // Prepare transaction data for the transactions table (without end_date)
