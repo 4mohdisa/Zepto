@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useTransactions } from '@/hooks/use-transactions';
-import { useRecurringTransactions } from '@/hooks/use-recurring-transactions';
+import { useSupabaseClient } from '@/utils/supabase/client';
+import { createTransactionService } from '@/app/services/transaction-services';
 import { generateIncomeTransactions, generateExpenseTransactions, generateRecurringTransactions } from './ai-data-generator';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,8 +19,11 @@ import { Loader2, Database, Sparkles, Trash2 } from 'lucide-react';
  * Add this to your dashboard or debug panel during development.
  */
 export function TestDataGenerator() {
-  const { createTransaction } = useTransactions();
-  const { createRecurringTransaction } = useRecurringTransactions();
+  const supabase = useSupabaseClient();
+  const transactionService = createTransactionService(supabase);
+  
+  const createTransaction = (data: any) => transactionService.createTransaction(data);
+  const createRecurringTransaction = (data: any) => transactionService.createRecurringTransaction(data);
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
