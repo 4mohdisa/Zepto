@@ -1,333 +1,290 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useSupabaseClient } from '@/utils/supabase/client'
-import { Transaction } from '@/app/types/transaction'
-import { DateRange } from 'react-day-picker'
 import { useAuth } from '@/context/auth-context'
-import { toast } from 'sonner'
-import { createTransactionService } from '@/app/services/transaction-services'
 
-interface TransactionWithCategory extends Transaction {
-  categories?: { name: string } | null
+interface Transaction {
+  id: number
+  user_id: string
+  date: string
+  name: string
+  description: string | null
+  amount: number
+  type: 'Income' | 'Expense'
+  account_type: string
+  category_id: number | null
+  categories: { id: number; name: string } | null
 }
 
-/**
- * useTransactions Hook
- * 
- * Manages transaction data with optimistic updates and real-time sync.
- * Uses Clerk-authenticated Supabase client for all database operations.
- */
-export function useTransactions(dateRange?: DateRange) {
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
+interface UseTransactionsState {
+  dateFrom: string
+  dateTo: string
+  search: string
+  categoryId: string
+  typeOrder: 'default' | 'expense_first' | 'income_first'
+}
+
+interface UseTransactionsReturn {
+  transactions: Transaction[]
+  loading: boolean
+  error: string | null
+  hasNextPage: boolean
+  isFetchingNextPage: boolean
+  fetchNextPage: () => Promise<void>
+  refetch: () => Promise<void>
+  state: UseTransactionsState
+  setDateFrom: (date: string) => void
+  setDateTo: (date: string) => void
+  setSearch: (search: string) => void
+  setCategoryId: (id: string) => void
+  setTypeOrder: (order: 'default' | 'expense_first' | 'income_first') => void
+  selectedIds: Set<number>
+  setSelectedIds: (ids: Set<number>) => void
+  toggleSelection: (id: number) => void
+  selectAll: () => void
+  clearSelection: () => void
+  bulkDelete: (ids: number[]) => Promise<void>
+  bulkUpdateCategory: (ids: number[], categoryId: string) => Promise<void>
+}
+
+export function useTransactions(): UseTransactionsReturn {
   const { user } = useAuth()
-  const supabase = useSupabaseClient()
   
-  // Create transaction service with authenticated client
-  const transactionService = createTransactionService(supabase)
+  // Filter state
+  const [state, setState] = useState<UseTransactionsState>({
+    dateFrom: '',
+    dateTo: '',
+    search: '',
+    categoryId: 'all',
+    typeOrder: 'default',
+  })
 
-  // Use refs to avoid dependency issues
-  const userRef = useRef(user)
-  userRef.current = user
-  const supabaseRef = useRef(supabase)
-  supabaseRef.current = supabase
-  const transactionServiceRef = useRef(transactionService)
-  transactionServiceRef.current = transactionService
-  const dateRangeRef = useRef(dateRange)
-  dateRangeRef.current = dateRange
+  // Data state
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [cursor, setCursor] = useState<string | null>(null)
+  const [hasNextPage, setHasNextPage] = useState(false)
+  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false)
 
-  // Function to manually trigger a refresh
-  const refresh = useCallback(() => {
-    setRefreshTrigger(prev => prev + 1)
-  }, [])
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
 
-  // Fetch transactions when component mounts or when dependencies change
-  useEffect(() => {
-    async function fetchTransactions() {
-      const currentUser = userRef.current
-      if (!currentUser?.id) {
-        console.log('[useTransactions] No user, skipping fetch')
-        return
+  // Refs for aborting requests
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Fetch transactions
+  const fetchTransactions = useCallback(async (isInitial = true) => {
+    if (!user?.id) return
+
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    abortControllerRef.current = new AbortController()
+
+    if (isInitial) {
+      setLoading(true)
+      setCursor(null)
+    } else {
+      setIsFetchingNextPage(true)
+    }
+    setError(null)
+
+    try {
+      const params = new URLSearchParams()
+      params.append('limit', '50')
+      if (state.dateFrom) params.append('dateFrom', state.dateFrom)
+      if (state.dateTo) params.append('dateTo', state.dateTo)
+      if (state.search) params.append('search', state.search)
+      if (state.categoryId !== 'all') params.append('categoryId', state.categoryId)
+      if (state.typeOrder !== 'default') params.append('typeOrder', state.typeOrder)
+      if (!isInitial && cursor) params.append('cursor', cursor)
+
+      const response = await fetch(`/api/transactions?${params.toString()}`, {
+        signal: abortControllerRef.current.signal,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.statusText}`)
       }
 
-      console.info('[useTransactions] Fetching for user:', currentUser.id.substring(0, 12) + '...')
+      const data = await response.json()
 
-      try {
-        setLoading(true)
-        let query = supabaseRef.current
-          .from('transactions')
-          .select(`
-            *,
-            categories (
-              name
-            )
-          `)
-          .eq('user_id', currentUser.id)
-          .order('date', { ascending: false })
-          .limit(200) // Limit to 200 most recent for performance
+      if (isInitial) {
+        setTransactions(data.rows)
+      } else {
+        setTransactions((prev) => [...prev, ...data.rows])
+      }
 
-        const currentDateRange = dateRangeRef.current
-        if (currentDateRange?.from) {
-          query = query.gte('date', currentDateRange.from.toISOString().split('T')[0])
-        }
-        if (currentDateRange?.to) {
-          query = query.lte('date', currentDateRange.to.toISOString().split('T')[0])
-        }
-
-        const { data, error } = await query as { data: TransactionWithCategory[] | null, error: any }
-
-        if (error) {
-          console.error('[useTransactions] Database error:', {
-            message: error.message,
-            code: error.code,
-            details: error.details,
-            hint: error.hint
-          })
-          throw new Error(error.message || 'Database error')
-        }
-
-        const processedTransactions = (data || []).map(transaction => ({
-          id: transaction.id,
-          user_id: transaction.user_id || currentUser.id,
-          date: transaction.date,
-          amount: transaction.amount,
-          name: transaction.name,
-          description: transaction.description,
-          type: transaction.type,
-          account_type: transaction.account_type,
-          category_id: transaction.category_id,
-          category_name: transaction.categories?.name || transaction.category_name || 'Uncategorized',
-          recurring_frequency: transaction.recurring_frequency,
-          created_at: transaction.created_at,
-          updated_at: transaction.updated_at
-        }))
-
-        console.info('[useTransactions] Fetched transactions:', processedTransactions.length)
-        setTransactions(processedTransactions as Transaction[])
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch transactions'
-        console.error('[useTransactions] Error fetching transactions:', {
-          error: errorMessage,
-          userId: currentUser.id.substring(0, 12) + '...'
-        })
-        setError(err instanceof Error ? err : new Error('Failed to fetch transactions'))
-      } finally {
+      setCursor(data.nextCursor)
+      setHasNextPage(data.hasNextPage)
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
+      console.error('Fetch transactions error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load transactions')
+    } finally {
+      if (isInitial) {
         setLoading(false)
+      } else {
+        setIsFetchingNextPage(false)
       }
     }
+  }, [user?.id, state, cursor])
 
-    fetchTransactions()
+  // Initial fetch and refetch on filter changes
+  useEffect(() => {
+    fetchTransactions(true)
+    // Clear selection when filters change
+    clearSelection()
+  }, [state.dateFrom, state.dateTo, state.categoryId, state.typeOrder])
 
-    // Polling disabled for better performance - manual refresh only
-    // if (user?.id) {
-    //   const pollingInterval = setInterval(() => {
-    //     refresh()
-    //   }, 30000)
-    //   
-    //   return () => clearInterval(pollingInterval)
-    // }
-  // Only depend on user?.id and refreshTrigger, not the callback
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, refreshTrigger])
+  // Debounced search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
 
-  // CRUD operations with optimistic updates
-  const createTransaction = useCallback(async (data: Partial<Transaction>) => {
-    const currentUser = userRef.current
-    if (!currentUser?.id) throw new Error('User not authenticated')
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchTransactions(true)
+      clearSelection()
+    }, 400)
 
-    const tempId = `temp-${Date.now()}`
-
-    try {
-      // Optimistic update - add transaction immediately
-      const optimisticTransaction: Transaction = {
-        id: tempId,
-        user_id: currentUser.id,
-        date: data.date || new Date().toISOString().split('T')[0],
-        amount: data.amount || 0,
-        name: data.name || '',
-        type: data.type || 'Expense',
-        account_type: data.account_type || 'Checking',
-        category_id: data.category_id || null,
-        category_name: data.category_name || 'Uncategorized',
-        description: data.description || null,
-        recurring_frequency: data.recurring_frequency || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
       }
+    }
+  }, [state.search])
 
-      setTransactions(prev => [optimisticTransaction, ...prev])
-
-      // Use the transaction service with authenticated client
-      const result = await transactionServiceRef.current.createTransaction({
-        user_id: currentUser.id,
-        date: data.date || new Date().toISOString().split('T')[0],
-        amount: data.amount || 0,
-        name: data.name || '',
-        type: data.type || 'Expense',
-        account_type: data.account_type || 'Checking',
-        category_id: data.category_id || null,
-        category_name: data.category_name || null,
-        description: data.description || null,
-        recurring_frequency: data.recurring_frequency || null
-      } as any)
-
-      const newTransaction = result.transaction
-
-      const processedTransaction: Transaction = {
-        id: newTransaction.id,
-        user_id: newTransaction.user_id || currentUser.id,
-        date: newTransaction.date,
-        amount: newTransaction.amount,
-        name: newTransaction.name,
-        description: newTransaction.description,
-        type: newTransaction.type,
-        account_type: newTransaction.account_type,
-        category_id: newTransaction.category_id,
-        category_name: data.category_name || 'Uncategorized',
-        recurring_frequency: newTransaction.recurring_frequency,
-        created_at: newTransaction.created_at,
-        updated_at: newTransaction.updated_at
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
       }
-
-      setTransactions(prev =>
-        prev.map(t => String(t.id) === tempId ? processedTransaction : t)
-      )
-
-      // Refresh to ensure all data is in sync
-      refresh()
-      
-      toast.success('Transaction created successfully')
-      return processedTransaction
-    } catch (err) {
-      // Remove optimistic transaction on error
-      setTransactions(prev => prev.filter(t => String(t.id) !== tempId))
-      console.error('Error creating transaction:', err)
-      toast.error('Failed to create transaction')
-      throw err
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
     }
   }, [])
 
-  const updateTransaction = useCallback(async (id: number | string, data: Partial<Transaction>) => {
-    const currentUser = userRef.current
-    if (!currentUser?.id) throw new Error('User not authenticated')
+  // Fetch next page
+  const fetchNextPage = useCallback(async () => {
+    if (!hasNextPage || isFetchingNextPage) return
+    await fetchTransactions(false)
+  }, [hasNextPage, isFetchingNextPage, fetchTransactions])
 
-    try {
-      // Optimistic update
-      setTransactions(prev => 
-        prev.map(t => t.id === id ? { ...t, ...data } : t)
-      )
-
-      // Remove user_id from data before sending to update
-      const { user_id, ...updateData } = data
-      await transactionServiceRef.current.updateTransaction(Number(id), updateData)
-
-      toast.success('Transaction updated successfully')
-      // Refresh to get the latest data with category names
-      refresh()
-    } catch (err) {
-      console.error('Error updating transaction:', err)
-      toast.error('Failed to update transaction')
-      // Revert optimistic update on error
-      refresh()
-      throw err
-    }
-  }, [refresh])
-
-  const deleteTransaction = useCallback(async (id: number | string) => {
-    const currentUser = userRef.current
-    if (!currentUser?.id) throw new Error('User not authenticated')
-
-    try {
-      setTransactions(prev => prev.filter(t => t.id !== id))
-
-      await transactionServiceRef.current.deleteTransaction(Number(id), currentUser.id)
-
-      refresh()
-      toast.success('Transaction deleted successfully')
-    } catch (err) {
-      console.error('Error deleting transaction:', err)
-      toast.error('Failed to delete transaction')
-      // Restore transaction on error
-      refresh()
-      throw err
-    }
-  }, [refresh])
-
-  const bulkDeleteTransactions = useCallback(async (ids: (number | string)[]) => {
-    const currentUser = userRef.current
-    if (!currentUser?.id) throw new Error('User not authenticated')
-
-    try {
-      setTransactions(prev => prev.filter(t => !t.id || !ids.includes(t.id)))
-
-      const { error } = await supabaseRef.current
-        .from('transactions')
-        .delete()
-        .in('id', ids.map(id => Number(id)))
-        .eq('user_id', currentUser.id)
-
-      if (error) throw error
-
-      refresh()
-      toast.success('Transactions deleted successfully')
-    } catch (err) {
-      console.error('Error deleting transactions:', err)
-      toast.error('Failed to delete transactions')
-      // Restore transactions on error
-      refresh()
-      throw err
-    }
-  }, [refresh])
-
-  const bulkUpdateTransactions = useCallback(async (ids: (number | string)[], changes: Partial<Transaction>) => {
-    const currentUser = userRef.current
-    if (!currentUser?.id) throw new Error('User not authenticated')
-
-    try {
-      // Optimistic update
-      setTransactions(prev => 
-        prev.map(t => t.id && ids.includes(t.id) ? { ...t, ...changes } : t)
-      )
-
-      const { id: _id, user_id: _user_id, ...changesWithoutId } = changes
-      const updateData = {
-        ...changesWithoutId,
-        date: changes.date,
-        updated_at: new Date().toISOString()
+  // Selection helpers
+  const toggleSelection = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
       }
-      
-      const { error } = await supabaseRef.current
-        .from('transactions')
-        .update(updateData)
-        .in('id', ids.map(id => Number(id)))
-        .eq('user_id', currentUser.id)
+      return newSet
+    })
+  }, [])
 
-      if (error) throw error
+  const selectAll = useCallback(() => {
+    setSelectedIds(new Set(transactions.map((t) => t.id)))
+  }, [transactions])
 
-      toast.success('Transactions updated successfully')
-      // Refresh to get the latest data with category names
-      refresh()
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set())
+  }, [])
+
+  // Bulk actions
+  const bulkDelete = useCallback(async (ids: number[]) => {
+    if (!user?.id || ids.length === 0) return
+
+    try {
+      const response = await fetch('/api/transactions/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionIds: ids }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete transactions')
+      }
+
+      // Remove deleted transactions from state
+      setTransactions((prev) => prev.filter((t) => !ids.includes(t.id)))
+      clearSelection()
     } catch (err) {
-      console.error('Error updating transactions:', err)
-      toast.error('Failed to update transactions')
-      // Revert optimistic updates on error
-      refresh()
+      console.error('Bulk delete error:', err)
       throw err
     }
-  }, [refresh])
+  }, [user?.id, clearSelection])
 
-  return { 
-    transactions, 
-    loading, 
-    error, 
-    refresh,
-    createTransaction,
-    updateTransaction,
-    deleteTransaction,
-    bulkDeleteTransactions,
-    bulkUpdateTransactions
+  const bulkUpdateCategory = useCallback(async (ids: number[], categoryId: string) => {
+    if (!user?.id || ids.length === 0) return
+
+    try {
+      const response = await fetch('/api/transactions/bulk-update-category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionIds: ids, categoryId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update transactions')
+      }
+
+      // Refresh to get updated data
+      await fetchTransactions(true)
+      clearSelection()
+    } catch (err) {
+      console.error('Bulk update error:', err)
+      throw err
+    }
+  }, [user?.id, fetchTransactions, clearSelection])
+
+  // State setters
+  const setDateFrom = useCallback((date: string) => {
+    setState((prev) => ({ ...prev, dateFrom: date }))
+  }, [])
+
+  const setDateTo = useCallback((date: string) => {
+    setState((prev) => ({ ...prev, dateTo: date }))
+  }, [])
+
+  const setSearch = useCallback((search: string) => {
+    setState((prev) => ({ ...prev, search }))
+  }, [])
+
+  const setCategoryId = useCallback((id: string) => {
+    setState((prev) => ({ ...prev, categoryId: id }))
+  }, [])
+
+  const setTypeOrder = useCallback((order: 'default' | 'expense_first' | 'income_first') => {
+    setState((prev) => ({ ...prev, typeOrder: order }))
+  }, [])
+
+  return {
+    transactions,
+    loading,
+    error,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    refetch: () => fetchTransactions(true),
+    state,
+    setDateFrom,
+    setDateTo,
+    setSearch,
+    setCategoryId,
+    setTypeOrder,
+    selectedIds,
+    setSelectedIds,
+    toggleSelection,
+    selectAll,
+    clearSelection,
+    bulkDelete,
+    bulkUpdateCategory,
   }
 }

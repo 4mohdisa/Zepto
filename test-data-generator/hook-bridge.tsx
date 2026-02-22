@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useTransactions } from '@/hooks/use-transactions';
-import { useRecurringTransactions } from '@/hooks/use-recurring-transactions';
+import { useSupabaseClient } from '@/utils/supabase/client';
+import { createTransactionService } from '@/app/services/transaction-services';
 
 /**
  * Hook Bridge Component
@@ -18,15 +18,15 @@ import { useRecurringTransactions } from '@/hooks/use-recurring-transactions';
  * generateTestData()       - For random test data
  */
 export function HookBridge() {
-  const { createTransaction } = useTransactions();
-  const { createRecurringTransaction } = useRecurringTransactions();
+  const supabase = useSupabaseClient();
+  const transactionService = createTransactionService(supabase);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
       // Expose hooks to window
       (window as any).__testDataHooks = {
-        createTransaction,
-        createRecurringTransaction,
+        createTransaction: (data: any) => transactionService.createTransaction(data),
+        createRecurringTransaction: (data: any) => transactionService.createRecurringTransaction(data),
       };
 
       // Dynamically import both browser modules
@@ -39,7 +39,7 @@ export function HookBridge() {
         console.log('  generateTestData()      - Random test data');
       });
     }
-  }, [createTransaction, createRecurringTransaction]);
+  }, [transactionService]);
 
   return null; // This component doesn't render anything
 }

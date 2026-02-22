@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useTransactions } from '@/hooks/use-transactions';
-import { useRecurringTransactions } from '@/hooks/use-recurring-transactions';
+import { useSupabaseClient } from '@/utils/supabase/client';
+import { createTransactionService } from '@/app/services/transaction-services';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Database, CheckCircle } from 'lucide-react';
@@ -16,8 +16,8 @@ import { toast } from 'sonner';
  * based on the user's actual spending patterns.
  */
 export function RealisticDataButton() {
-  const { createTransaction } = useTransactions();
-  const { createRecurringTransaction } = useRecurringTransactions();
+  const supabase = useSupabaseClient();
+  const transactionService = createTransactionService(supabase);
   const [isLoading, setIsLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
@@ -28,7 +28,10 @@ export function RealisticDataButton() {
     toast.info('Generating realistic transaction data... This may take a minute.');
     
     try {
-      const result = await generateRealisticData(createTransaction, createRecurringTransaction);
+      const result = await generateRealisticData(
+        (data) => transactionService.createTransaction(data),
+        (data) => transactionService.createRecurringTransaction(data)
+      );
       
       setIsComplete(true);
       toast.success(`Created ${result.income + result.expenses > 0 ? 'transactions' : 'data'} successfully!`);

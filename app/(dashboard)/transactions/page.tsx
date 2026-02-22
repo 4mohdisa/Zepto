@@ -1,97 +1,158 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { DateRange } from "react-day-picker"
-import { startOfMonth, endOfMonth } from "date-fns"
-
-// Hooks
 import { useTransactions } from '@/hooks/use-transactions'
-import { useAuth } from '@/context/auth-context'
-import { useTransactionsActions } from './_hooks'
-
-// Components
+import { TransactionFilters } from './_components/transaction-filters'
+import { BulkActionsBar } from './_components/bulk-actions-bar'
+import { TransactionsTable } from './_components/transactions-table'
+import { Button } from '@/components/ui/button'
+import { Plus, Upload } from 'lucide-react'
+import { useState } from 'react'
 import { TransactionDialog } from '@/components/app/transactions/transaction-dialog'
-import { TransactionsContent } from './_components'
-
-// Show last 8 months to include populated historical data
-const DEFAULT_DATE_RANGE = {
-  from: new Date(2025, 6, 1), // July 2025
-  to: endOfMonth(new Date())   // Current month end
-}
+import { UploadDialog } from '@/components/app/dialogs/upload-dialog'
+import { toast } from 'sonner'
 
 export default function TransactionsPage() {
-  const { user } = useAuth()
-  
-  // Dialog state
-  const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false)
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(DEFAULT_DATE_RANGE)
-  
-  // Fetch transactions
   const {
-    transactions: transactionsList,
+    transactions,
     loading,
     error,
-    refresh,
-    createTransaction,
-    updateTransaction
-  } = useTransactions(dateRange)
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    refetch,
+    state,
+    setDateFrom,
+    setDateTo,
+    setSearch,
+    setCategoryId,
+    setTypeOrder,
+    selectedIds,
+    toggleSelection,
+    selectAll,
+    clearSelection,
+    bulkDelete,
+    bulkUpdateCategory,
+  } = useTransactions()
 
-  // Dialog handlers
-  const openAddDialog = useCallback(() => setIsAddTransactionOpen(true), [])
-  const closeAddDialog = useCallback(() => setIsAddTransactionOpen(false), [])
+  const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false)
+  const [isUploadOpen, setIsUploadOpen] = useState(false)
 
-  // Action handlers
-  const { handleAddSuccess, handleDelete, handleBulkDelete, handleEdit, handleBulkEdit } = useTransactionsActions({
-    userId: user?.id,
-    refresh,
-    onOpenAddDialog: openAddDialog,
-    setDateRange
-  })
+  const handleBulkDelete = async () => {
+    try {
+      await bulkDelete(Array.from(selectedIds))
+      toast.success(`Deleted ${selectedIds.size} transactions`)
+    } catch (err) {
+      toast.error('Failed to delete transactions')
+    }
+  }
 
-  // Wrap add success to also close dialog
-  const onAddSuccess = useCallback(async () => {
-    closeAddDialog()
-    await handleAddSuccess()
-  }, [closeAddDialog, handleAddSuccess])
+  const handleBulkChangeCategory = async (categoryId: string) => {
+    try {
+      await bulkUpdateCategory(Array.from(selectedIds), categoryId)
+      toast.success(`Updated category for ${selectedIds.size} transactions`)
+    } catch (err) {
+      toast.error('Failed to update transactions')
+    }
+  }
+
+  const allSelected = selectedIds.size > 0 && selectedIds.size === transactions.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < transactions.length
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-6 py-8 max-w-[1400px]">
-        {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">Transactions</h1>
-          <p className="text-sm text-gray-600 mt-1">View and manage all your transactions</p>
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-[1400px]">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <h1 className="text-2xl font-bold">Transactions</h1>
+          
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsUploadOpen(true)}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </Button>
+            
+            <Button onClick={() => setIsAddTransactionOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Transaction
+            </Button>
+          </div>
         </div>
-        
-        {/* Transactions Content */}
-        <div className="w-full">
-          <TransactionsContent
-            transactions={transactionsList}
-            loading={loading}
-            error={error}
-            dateRange={dateRange}
-            onRefresh={refresh}
-            onDelete={handleDelete}
-            onBulkDelete={handleBulkDelete}
-            onEdit={handleEdit}
-            onBulkEdit={handleBulkEdit}
-            onDateRangeChange={setDateRange}
-            onAddTransaction={openAddDialog}
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p className="text-red-600">{error}</p>
+            <Button variant="outline" size="sm" onClick={refetch} className="mt-2">
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="mb-4">
+          <TransactionFilters
+            dateFrom={state.dateFrom}
+            dateTo={state.dateTo}
+            search={state.search}
+            categoryId={state.categoryId}
+            typeOrder={state.typeOrder}
+            onDateFromChange={setDateFrom}
+            onDateToChange={setDateTo}
+            onSearchChange={setSearch}
+            onCategoryIdChange={setCategoryId}
+            onTypeOrderChange={setTypeOrder}
           />
         </div>
+
+        {/* Bulk Actions */}
+        <div className="mb-4">
+          <BulkActionsBar
+            selectedCount={selectedIds.size}
+            onClearSelection={clearSelection}
+            onDelete={handleBulkDelete}
+            onChangeCategory={handleBulkChangeCategory}
+          />
+        </div>
+
+        {/* Loading state for initial load */}
+        {loading && transactions.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Loading transactions...</p>
+          </div>
+        )}
+
+        {/* Table */}
+        {!loading && (
+          <TransactionsTable
+            transactions={transactions}
+            loading={loading}
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={fetchNextPage}
+            selectedIds={selectedIds}
+            onToggleSelection={toggleSelection}
+            onSelectAll={selectAll}
+            allSelected={allSelected}
+            someSelected={someSelected}
+          />
+        )}
       </div>
 
-      {/* Transaction Dialog */}
-      {isAddTransactionOpen && (
-        <TransactionDialog
-          isOpen={isAddTransactionOpen}
-          onClose={closeAddDialog}
-          onSubmit={onAddSuccess}
-          mode="create"
-          createTransaction={createTransaction}
-          updateTransaction={updateTransaction}
-        />
-      )}
+      {/* Dialogs */}
+      <TransactionDialog
+        isOpen={isAddTransactionOpen}
+        onClose={() => setIsAddTransactionOpen(false)}
+        mode="create"
+      />
+
+      <UploadDialog
+        open={isUploadOpen}
+        onOpenChange={setIsUploadOpen}
+        onSuccess={refetch}
+      />
     </div>
   )
 }

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useTransactions } from '@/hooks/use-transactions';
-import { useRecurringTransactions } from '@/hooks/use-recurring-transactions';
+import { useSupabaseClient } from '@/utils/supabase/client';
+import { createTransactionService } from '@/app/services/transaction-services';
 import { autoPopulateData, getErrorLogs, getSuccessLogs, clearLogs } from './auto-populate';
 
 /**
@@ -20,10 +20,9 @@ import { autoPopulateData, getErrorLogs, getSuccessLogs, clearLogs } from './aut
  */
 
 export function AutoRunDataPopulation() {
-  const { createTransaction } = useTransactions();
-  const { createRecurringTransaction } = useRecurringTransactions();
+  const supabase = useSupabaseClient();
+  const transactionService = createTransactionService(supabase);
   const [status, setStatus] = useState<'idle' | 'running' | 'complete' | 'error'>('idle');
-  const [progress, setProgress] = useState(0);
   const isMounted = useRef(false);
 
   useEffect(() => {
@@ -41,7 +40,10 @@ export function AutoRunDataPopulation() {
           return;
         }
         setStatus('running');
-        await autoPopulateData(createTransaction, createRecurringTransaction);
+        await autoPopulateData(
+          (data) => transactionService.createTransaction(data),
+          (data) => transactionService.createRecurringTransaction(data)
+        );
         (window as any).__dataPopulated = true;
         setStatus('complete');
         alert('✅ Data population complete!');
@@ -51,7 +53,7 @@ export function AutoRunDataPopulation() {
     return () => {
       isMounted.current = false;
     };
-  }, [createTransaction, createRecurringTransaction]);
+  }, [transactionService]);
 
   // Don't render anything
   return null;
