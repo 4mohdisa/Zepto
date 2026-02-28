@@ -3,6 +3,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/context/auth-context'
 
+// Cache for dashboard data
+interface CacheEntry {
+  data: DashboardData
+  timestamp: number
+}
+const dashboardCache = new Map<string, CacheEntry>()
+const CACHE_STALE_TIME = 30 * 1000 // 30 seconds
+
 interface DashboardData {
   period: string
   total_balance: number
@@ -22,6 +30,7 @@ interface UseDashboardDataReturn {
   loading: boolean
   error: string | null
   refetch: () => Promise<void>
+  invalidateCache: () => void
 }
 
 export function useDashboardData(period: string): UseDashboardDataReturn {
@@ -30,8 +39,19 @@ export function useDashboardData(period: string): UseDashboardDataReturn {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (forceRefresh = false) => {
     if (!user?.id) {
+      setLoading(false)
+      return
+    }
+
+    const cacheKey = `${user.id}:${period}`
+    const cached = dashboardCache.get(cacheKey)
+    const now = Date.now()
+
+    // Use cache if available and not stale
+    if (!forceRefresh && cached && (now - cached.timestamp) < CACHE_STALE_TIME) {
+      setData(cached.data)
       setLoading(false)
       return
     }
@@ -48,6 +68,12 @@ export function useDashboardData(period: string): UseDashboardDataReturn {
 
       const result = await response.json()
       setData(result)
+      
+      // Update cache
+      dashboardCache.set(cacheKey, {
+        data: result,
+        timestamp: Date.now()
+      })
     } catch (err) {
       console.error('Dashboard fetch error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load dashboard')
@@ -57,13 +83,22 @@ export function useDashboardData(period: string): UseDashboardDataReturn {
   }, [period, user?.id])
 
   useEffect(() => {
-    fetchData()
+    fetchData(false) // use cache if available
   }, [fetchData])
+
+  // Invalidate cache for this period
+  const invalidateCache = useCallback(() => {
+    if (user?.id) {
+      const cacheKey = `${user.id}:${period}`
+      dashboardCache.delete(cacheKey)
+    }
+  }, [user?.id, period])
 
   return {
     data,
     loading,
     error,
-    refetch: fetchData,
+    refetch: () => fetchData(true), // force refresh
+    invalidateCache,
   }
 }

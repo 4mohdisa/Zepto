@@ -1,10 +1,19 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback, memo } from 'react'
 import { formatCurrency } from '@/utils/format'
 import { format } from 'date-fns'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Loader2 } from 'lucide-react'
+import { Loader2, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 interface Transaction {
   id: number
@@ -15,6 +24,7 @@ interface Transaction {
   type: 'Income' | 'Expense'
   account_type: string
   categories: { id: number; name: string } | null
+  category_id: number | null
 }
 
 interface TransactionsTableProps {
@@ -28,7 +38,129 @@ interface TransactionsTableProps {
   onSelectAll: () => void
   allSelected: boolean
   someSelected: boolean
+  onEdit?: (transaction: Transaction) => void
+  onDelete?: (transaction: Transaction) => void
 }
+
+// Memoized table row component to prevent unnecessary re-renders
+const TransactionRow = memo(function TransactionRow({
+  transaction,
+  isSelected,
+  onToggleSelection,
+  onEdit,
+  onDelete,
+}: {
+  transaction: Transaction
+  isSelected: boolean
+  onToggleSelection: (id: number) => void
+  onEdit?: (transaction: Transaction) => void
+  onDelete?: (transaction: Transaction) => void
+}) {
+  const handleEdit = useCallback(() => {
+    onEdit?.(transaction)
+  }, [onEdit, transaction])
+
+  const handleDelete = useCallback(() => {
+    onDelete?.(transaction)
+  }, [onDelete, transaction])
+
+  // Handle row click - open edit dialog, but not when clicking checkbox or actions
+  const handleRowClick = useCallback((e: React.MouseEvent) => {
+    // Don't trigger edit if clicking checkbox, action button, or dropdown
+    const target = e.target as HTMLElement
+    if (
+      target.closest('button') || 
+      target.closest('[role="checkbox"]') || 
+      target.closest('[data-dropdown]')
+    ) {
+      return
+    }
+    onEdit?.(transaction)
+  }, [onEdit, transaction])
+
+  return (
+    <tr 
+      onClick={handleRowClick}
+      className="border-b border-gray-100 hover:bg-gray-50/80 transition-colors cursor-pointer"
+    >
+      <td className="px-3 sm:px-4 py-3" onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={() => onToggleSelection(transaction.id)}
+          aria-label={`Select transaction ${transaction.name}`}
+        />
+      </td>
+      <td className="px-3 sm:px-4 py-3 text-sm whitespace-nowrap">
+        {format(new Date(transaction.date), 'MMM d, yyyy')}
+      </td>
+      <td className="px-3 sm:px-4 py-3">
+        <div className="max-w-[120px] sm:max-w-[200px]">
+          <p className="text-sm font-medium truncate" title={transaction.name}>
+            {transaction.name}
+          </p>
+          {transaction.description && (
+            <p
+              className="text-xs text-muted-foreground truncate hidden sm:block"
+              title={transaction.description}
+            >
+              {transaction.description}
+            </p>
+          )}
+        </div>
+      </td>
+      <td className="px-3 sm:px-4 py-3 text-sm">
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+          {transaction.categories?.name || 'Uncategorized'}
+        </span>
+      </td>
+      <td className={cn(
+        "px-3 sm:px-4 py-3 text-sm text-right font-medium whitespace-nowrap",
+        transaction.type === 'Income' ? 'text-green-600' : 'text-red-600'
+      )}>
+        {transaction.type === 'Income' ? '+' : '-'}
+        {formatCurrency(transaction.amount)}
+      </td>
+      <td className="px-3 sm:px-4 py-3 text-center">
+        <span className={cn(
+          "inline-flex px-2 py-0.5 rounded-full text-xs font-medium",
+          transaction.type === 'Income'
+            ? 'bg-green-100 text-green-700'
+            : 'bg-red-100 text-red-700'
+        )}>
+          {transaction.type === 'Income' ? 'In' : 'Ex'}
+        </span>
+      </td>
+      <td className="px-3 sm:px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              aria-label="Open actions menu"
+              data-dropdown
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem onClick={handleEdit} className="cursor-pointer">
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={handleDelete} 
+              className="cursor-pointer text-red-600 focus:text-red-600"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </td>
+    </tr>
+  )
+})
 
 export function TransactionsTable({
   transactions,
@@ -41,6 +173,8 @@ export function TransactionsTable({
   onSelectAll,
   allSelected,
   someSelected,
+  onEdit,
+  onDelete,
 }: TransactionsTableProps) {
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
@@ -62,10 +196,46 @@ export function TransactionsTable({
     return () => observer.disconnect()
   }, [hasNextPage, isFetchingNextPage, onLoadMore])
 
-  // Empty states
+  // Show skeleton while loading initial data - prevent empty flash
+  if (loading && transactions.length === 0) {
+    return (
+      <div className="border rounded-lg overflow-hidden bg-white">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] table-fixed">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="w-10 px-3 sm:px-4 py-3"><Skeleton className="h-4 w-4" /></th>
+                <th className="px-3 sm:px-4 py-3 w-28"><Skeleton className="h-4 w-16" /></th>
+                <th className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-20" /></th>
+                <th className="px-3 sm:px-4 py-3 w-32"><Skeleton className="h-4 w-16" /></th>
+                <th className="px-3 sm:px-4 py-3 w-28"><Skeleton className="h-4 w-16" /></th>
+                <th className="px-3 sm:px-4 py-3 w-16"><Skeleton className="h-4 w-12" /></th>
+                <th className="px-3 sm:px-4 py-3 w-14"><Skeleton className="h-4 w-8" /></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <tr key={i} className="border-b border-gray-100">
+                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-4" /></td>
+                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-20" /></td>
+                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-32" /></td>
+                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-20" /></td>
+                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-8" /></td>
+                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-8" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
+  // Empty state - only show when not loading and no data
   if (!loading && transactions.length === 0) {
     return (
-      <div className="text-center py-12 border rounded-lg">
+      <div className="text-center py-12 border rounded-lg bg-white">
         <p className="text-muted-foreground">No transactions found</p>
         <p className="text-sm text-muted-foreground mt-1">
           Try adjusting your filters or add a new transaction
@@ -75,12 +245,12 @@ export function TransactionsTable({
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden">
+    <div className="border rounded-lg overflow-hidden bg-white animate-fade-in">
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-muted/50 border-b">
+        <table className="w-full min-w-[640px] table-fixed">
+          <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="w-10 px-4 py-3">
+              <th className="w-10 px-3 sm:px-4 py-3">
                 <Checkbox
                   checked={allSelected}
                   ref={(el) => {
@@ -89,71 +259,34 @@ export function TransactionsTable({
                     }
                   }}
                   onCheckedChange={onSelectAll}
+                  aria-label="Select all transactions"
                 />
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium">Date</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">Category</th>
-              <th className="px-4 py-3 text-right text-sm font-medium">Amount</th>
-              <th className="px-4 py-3 text-center text-sm font-medium">Type</th>
+              <th className="px-3 sm:px-4 py-3 text-left text-sm font-medium text-gray-700 w-28">Date</th>
+              <th className="px-3 sm:px-4 py-3 text-left text-sm font-medium text-gray-700">Name</th>
+              <th className="px-3 sm:px-4 py-3 text-left text-sm font-medium text-gray-700 w-32">Category</th>
+              <th className="px-3 sm:px-4 py-3 text-right text-sm font-medium text-gray-700 w-28">Amount</th>
+              <th className="px-3 sm:px-4 py-3 text-center text-sm font-medium text-gray-700 w-16">Type</th>
+              <th className="px-3 sm:px-4 py-3 text-right text-sm font-medium text-gray-700 w-14">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {transactions.map((transaction) => (
-              <tr
+              <TransactionRow
                 key={transaction.id}
-                className="hover:bg-muted/30 transition-colors"
-              >
-                <td className="px-4 py-3">
-                  <Checkbox
-                    checked={selectedIds.has(transaction.id)}
-                    onCheckedChange={() => onToggleSelection(transaction.id)}
-                  />
-                </td>
-                <td className="px-4 py-3 text-sm whitespace-nowrap">
-                  {format(new Date(transaction.date), 'MMM d, yyyy')}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="max-w-[200px]">
-                    <p className="text-sm font-medium truncate" title={transaction.name}>
-                      {transaction.name}
-                    </p>
-                    {transaction.description && (
-                      <p
-                        className="text-xs text-muted-foreground truncate"
-                        title={transaction.description}
-                      >
-                        {transaction.description}
-                      </p>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  {transaction.categories?.name || 'Uncategorized'}
-                </td>
-                <td className={`px-4 py-3 text-sm text-right font-medium ${
-                  transaction.type === 'Income' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {transaction.type === 'Income' ? '+' : '-'}
-                  {formatCurrency(transaction.amount)}
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                    transaction.type === 'Income'
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700'
-                  }`}>
-                    {transaction.type}
-                  </span>
-                </td>
-              </tr>
+                transaction={transaction}
+                isSelected={selectedIds.has(transaction.id)}
+                onToggleSelection={onToggleSelection}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
             ))}
           </tbody>
         </table>
       </div>
 
       {/* Loading indicator / Load more trigger */}
-      <div ref={loadMoreRef} className="py-4 text-center">
+      <div ref={loadMoreRef} className="py-4 text-center border-t">
         {isFetchingNextPage && (
           <div className="flex items-center justify-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />

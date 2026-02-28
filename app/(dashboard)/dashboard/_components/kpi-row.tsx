@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { formatCurrency } from '@/utils/format'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TrendingUp, TrendingDown, Wallet, PiggyBank } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface KPIData {
   income: number
@@ -20,12 +21,12 @@ interface KpiRowProps {
 export function KpiRow({ kpis, loading }: KpiRowProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[1, 2, 3, 4].map((i) => (
           <Card key={i}>
-            <CardContent className="pt-6">
-              <Skeleton className="h-4 w-20 mb-2" />
-              <Skeleton className="h-8 w-32" />
+            <CardContent className="p-4 sm:pt-6">
+              <Skeleton className="h-3 sm:h-4 w-16 sm:w-20 mb-2" />
+              <Skeleton className="h-6 sm:h-8 w-20 sm:w-32" />
             </CardContent>
           </Card>
         ))}
@@ -67,17 +68,19 @@ export function KpiRow({ kpis, loading }: KpiRowProps) {
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {items.map((item) => (
         <Card key={item.label}>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${item.iconClass}`}>
-                <item.icon className="h-4 w-4" />
+          <CardContent className="p-3 sm:p-4 sm:pt-5">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className={cn("p-1.5 sm:p-2 rounded-lg flex-shrink-0", item.iconClass)}>
+                <item.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">{item.label}</p>
-                <p className="text-2xl font-semibold">{item.format(item.value)}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">{item.label}</p>
+                <p className="text-lg sm:text-2xl font-semibold truncate">
+                  {item.format(item.value)}
+                </p>
               </div>
             </div>
           </CardContent>

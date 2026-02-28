@@ -324,6 +324,39 @@ export type Database = {
           },
         ]
       }
+      merchants: {
+        Row: {
+          id: string
+          user_id: string
+          merchant_name: string
+          normalized_name: string
+          transaction_count: number
+          last_used_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          merchant_name: string
+          normalized_name: string
+          transaction_count?: number
+          last_used_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          merchant_name?: string
+          normalized_name?: string
+          transaction_count?: number
+          last_used_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

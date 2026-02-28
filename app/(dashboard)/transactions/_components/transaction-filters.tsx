@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select'
 import { ArrowUpDown, Search } from 'lucide-react'
 import { categories } from '@/data/categories'
+import { cn } from '@/lib/utils'
 
 interface TransactionFiltersProps {
   dateFrom: string
@@ -41,16 +42,16 @@ export function TransactionFilters({
   const isDateRangeInvalid = dateFrom && dateTo && new Date(dateFrom) > new Date(dateTo)
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3 sm:gap-4">
       {/* Top row: Search and Category */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search transactions..."
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-9 sm:h-10"
           />
         </div>
         
@@ -58,7 +59,7 @@ export function TransactionFilters({
           value={categoryId}
           onValueChange={onCategoryIdChange}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px] h-9 sm:h-10">
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
@@ -73,31 +74,31 @@ export function TransactionFilters({
       </div>
 
       {/* Bottom row: Date range and Type sort */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-start sm:items-center">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Input
             type="date"
             value={dateFrom}
             onChange={(e) => onDateFromChange(e.target.value)}
-            className="w-[140px]"
+            className="w-full sm:w-[130px] h-9 sm:h-10 text-sm"
           />
-          <span className="text-muted-foreground">to</span>
+          <span className="text-muted-foreground text-sm">to</span>
           <Input
             type="date"
             value={dateTo}
             onChange={(e) => onDateToChange(e.target.value)}
-            className="w-[140px]"
+            className="w-full sm:w-[130px] h-9 sm:h-10 text-sm"
           />
         </div>
 
         {isDateRangeInvalid && (
-          <span className="text-sm text-red-500">
+          <span className="text-xs sm:text-sm text-red-500">
             Start date must be before end date
           </span>
         )}
 
-        <div className="flex items-center gap-2 sm:ml-auto">
-          <span className="text-sm text-muted-foreground">Sort by:</span>
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">Sort by:</span>
           <Button
             variant="outline"
             size="sm"
@@ -110,12 +111,19 @@ export function TransactionFilters({
                 onTypeOrderChange('default')
               }
             }}
-            className="gap-1"
+            className="gap-1 h-9 sm:h-10 text-xs sm:text-sm"
           >
             <ArrowUpDown className="h-3 w-3" />
-            {typeOrder === 'default' && 'Date'}
-            {typeOrder === 'expense_first' && 'Expenses First'}
-            {typeOrder === 'income_first' && 'Income First'}
+            <span className="hidden sm:inline">
+              {typeOrder === 'default' && 'Date'}
+              {typeOrder === 'expense_first' && 'Expenses First'}
+              {typeOrder === 'income_first' && 'Income First'}
+            </span>
+            <span className="sm:hidden">
+              {typeOrder === 'default' && 'Date'}
+              {typeOrder === 'expense_first' && 'Exp First'}
+              {typeOrder === 'income_first' && 'Inc First'}
+            </span>
           </Button>
         </div>
       </div>

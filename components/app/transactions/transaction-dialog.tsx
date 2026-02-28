@@ -1,251 +1,338 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
+import { toast } from 'sonner'
+import { z } from 'zod'
 
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Form } from "@/components/ui/form"
-
-import { transactionTypes, TransactionType } from "@/data/transactiontypes"
-import { frequencies, FrequencyType } from "@/data/frequencies"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { transactionTypes } from "@/data/transactiontypes"
 import { useCategories } from "@/hooks/use-categories"
-import { accountTypes, AccountType } from "@/data/account-types"
-import { BaseDialogProps, TransactionFormValues, transactionSchema } from '../shared/transaction-schema'
+import { accountTypes } from "@/data/account-types"
 import { useAuth } from '@/context/auth-context'
+import { useSupabaseClient } from '@/utils/supabase/client'
+import { debugLogger } from '@/utils/debug-logger'
+import { format } from 'date-fns'
+import { Loader2 } from 'lucide-react'
 
-import { InputField, TextareaField, SelectField, DatePickerField } from '../shared/form-fields'
-import { LoadingButton } from '../shared/loading-button'
-import { FormErrorSummary } from '../shared/form-error-summary'
-import { useTransactionSubmit } from './hooks/use-transaction-submit'
+// Simplified schema without recurring
+const transactionSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  amount: z.number().positive('Amount must be greater than 0'),
+  date: z.string().min(1, 'Date is required'),
+  type: z.enum(['Income', 'Expense']),
+  account_type: z.string().min(1, 'Account is required'),
+  category_id: z.string().min(1, 'Category is required'),
+  description: z.string().optional(),
+})
 
-interface TransactionDialogProps extends Omit<BaseDialogProps, 'mode'> {
-  initialData?: Partial<TransactionFormValues>
-  mode: 'create' | 'edit'
-  onSubmit?: (data: TransactionFormValues) => void
-  createTransaction?: (data: Partial<any>) => Promise<any>
-  updateTransaction?: (id: number | string, data: Partial<any>) => Promise<void>
-}
+type TransactionFormValues = z.infer<typeof transactionSchema>
 
-const DEFAULT_VALUES: TransactionFormValues = {
-  name: "",
-  description: "",
-  amount: 0,
-  type: "Expense" as TransactionType,
-  account_type: "Cash" as AccountType,
-  category_id: "",
-  date: new Date(),
-  recurring_frequency: "Never" as FrequencyType,
+interface TransactionDialogProps {
+  isOpen: boolean
+  onClose: () => void
+  mode?: 'create' | 'edit'
+  initialData?: Partial<TransactionFormValues> & { id?: number }
+  onSuccess?: () => void
 }
 
 export function TransactionDialog({
   isOpen,
   onClose,
-  onSubmit,
-  initialData,
   mode = 'create',
-  createTransaction,
-  updateTransaction
+  initialData,
+  onSuccess,
 }: TransactionDialogProps) {
   const { user } = useAuth()
-  const { categories, loading: categoriesLoading, error: categoriesError } = useCategories()
+  const supabase = useSupabaseClient()
+  const { categories, loading: categoriesLoading } = useCategories()
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
-    defaultValues: { ...DEFAULT_VALUES, ...initialData },
-  })
-
-  // Reset form when initialData changes or dialog opens
-  useEffect(() => {
-    if (isOpen && initialData) {
-      form.reset({ ...DEFAULT_VALUES, ...initialData })
-    }
-  }, [form, initialData, isOpen])
-
-  const { handleSubmit, isSubmitting } = useTransactionSubmit({
-    userId: user?.id,
-    categories,
-    categoriesLoading,
-    categoriesError,
-    mode,
-    onSuccess: () => {
-      form.reset()
-      onClose()
+    defaultValues: {
+      name: '',
+      amount: 0,
+      date: format(new Date(), 'yyyy-MM-dd'),
+      type: 'Expense',
+      account_type: 'Checking',
+      category_id: '',
+      description: '',
     },
-    onSubmitCallback: onSubmit,
-    createTransaction,
-    updateTransaction
   })
 
-  // Memoize select options
-  const typeOptions = useMemo(() => 
-    transactionTypes.map(t => ({ value: t.value, label: t.label })), 
-  [])
-  
-  const accountTypeOptions = useMemo(() => 
-    accountTypes.map(t => ({ value: t.value, label: t.label })), 
-  [])
-  
-  const categoryOptions = useMemo(() => 
-    categories?.map(c => ({ value: String(c.id), label: c.name })) || [],
-  [categories])
-  
-  const frequencyOptions = useMemo(() => [
-    { value: "Never", label: "One-time Transaction" },
-    ...frequencies.map(f => ({ value: f.value, label: f.label }))
-  ], [])
+  // Reset form when dialog opens/closes or initialData changes
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData && mode === 'edit') {
+        form.reset({
+          name: initialData.name || '',
+          amount: initialData.amount || 0,
+          date: initialData.date || format(new Date(), 'yyyy-MM-dd'),
+          type: initialData.type || 'Expense',
+          account_type: initialData.account_type || 'Checking',
+          category_id: initialData.category_id?.toString() || '',
+          description: initialData.description || '',
+        })
+      } else {
+        form.reset({
+          name: '',
+          amount: 0,
+          date: format(new Date(), 'yyyy-MM-dd'),
+          type: 'Expense',
+          account_type: 'Checking',
+          category_id: '',
+          description: '',
+        })
+      }
+    }
+  }, [isOpen, initialData, mode, form])
+
+  const handleSubmit = async (values: TransactionFormValues) => {
+    if (!user?.id) {
+      toast.error('Please sign in')
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const categoryId = Number(values.category_id)
+      const selectedCategory = categories?.find(c => c.id === categoryId)
+
+      if (!selectedCategory) {
+        throw new Error('Please select a valid category')
+      }
+
+      const payload = {
+        user_id: user.id,
+        name: values.name,
+        amount: values.amount,
+        type: values.type,
+        account_type: values.account_type,
+        category_id: categoryId,
+        category_name: selectedCategory.name,
+        date: values.date,
+        description: values.description || '',
+        recurring_frequency: 'Never',
+      }
+
+      if (mode === 'edit' && initialData?.id) {
+        // Update existing transaction
+        debugLogger.info('transaction', 'Updating transaction', { id: initialData.id })
+        
+        const { error } = await supabase
+          .from('transactions')
+          .update({
+            ...payload,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', initialData.id)
+          .eq('user_id', user.id)
+
+        if (error) throw error
+        
+        toast.success('Transaction updated')
+      } else {
+        // Create new transaction
+        debugLogger.info('transaction', 'Creating transaction', { name: values.name })
+        
+        const { error } = await supabase
+          .from('transactions')
+          .insert(payload)
+
+        if (error) throw error
+        
+        toast.success('Transaction created')
+      }
+
+      onSuccess?.()
+      onClose()
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Something went wrong'
+      toast.error(mode === 'edit' ? 'Failed to update' : 'Failed to create', {
+        description: message,
+      })
+      debugLogger.error('transaction', mode === 'edit' ? 'Update failed' : 'Create failed', { error: message })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const errors = form.formState.errors
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[650px] bg-white border-gray-200 shadow-2xl">
-        {/* Enhanced Header */}
-        <DialogHeader className="space-y-3 pb-6 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#635BFF] to-blue-600 flex items-center justify-center shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <DialogTitle className="text-2xl font-bold text-gray-900">
-                {mode === 'create' ? 'Create Transaction' : 'Edit Transaction'}
-              </DialogTitle>
-              <DialogDescription className="text-sm text-gray-600 mt-1">
-                {mode === 'create'
-                  ? 'Add a new transaction to your financial records.'
-                  : 'Make changes to your transaction details.'}
-              </DialogDescription>
-            </div>
-          </div>
+      <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b">
+          <DialogTitle className="text-lg font-semibold">
+            {mode === 'create' ? 'Add Transaction' : 'Edit Transaction'}
+          </DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 py-4">
-            <FormErrorSummary errors={form.formState.errors} />
-
-            {/* Transaction Details Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-px flex-1 bg-gray-200" />
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Transaction Details</span>
-                <div className="h-px flex-1 bg-gray-200" />
-              </div>
-
-              {/* Name and Amount */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField
-                  control={form.control}
-                  name="name"
-                  label="Transaction Name"
-                  placeholder="e.g., Grocery Shopping"
-                />
-                <InputField
-                  control={form.control}
-                  name="amount"
-                  label="Amount"
-                  placeholder="0.00"
-                  type="number"
-                />
-              </div>
-
-              {/* Date, Type, and Account Type */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <DatePickerField
-                  control={form.control}
-                  name="date"
-                  label="Date"
-                />
-                <SelectField
-                  control={form.control}
-                  name="type"
-                  label="Type"
-                  placeholder="Select type"
-                  options={typeOptions}
-                />
-                <SelectField
-                  control={form.control}
-                  name="account_type"
-                  label="Account"
-                  placeholder="Select account"
-                  options={accountTypeOptions}
-                />
-              </div>
-            </div>
-
-            {/* Categorization Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-px flex-1 bg-gray-200" />
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Categorization</span>
-                <div className="h-px flex-1 bg-gray-200" />
-              </div>
-
-              {/* Category and Recurring Frequency */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <SelectField
-                  control={form.control}
-                  name="category_id"
-                  label="Category"
-                  placeholder="Select category"
-                  options={categoryOptions}
-                />
-                <SelectField
-                  control={form.control}
-                  name="recurring_frequency"
-                  label="Recurring Frequency"
-                  placeholder="One-time transaction"
-                  options={frequencyOptions}
-                />
-              </div>
-            </div>
-
-            {/* Additional Information Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-px flex-1 bg-gray-200" />
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Additional Information</span>
-                <div className="h-px flex-1 bg-gray-200" />
-              </div>
-
-              {/* Description */}
-              <TextareaField
-                control={form.control}
-                name="description"
-                label="Description (Optional)"
-                placeholder="Add notes, tags, or any additional details..."
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="p-6 space-y-4">
+          {/* Row 1: Name + Amount */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-xs font-medium">Name</Label>
+              <Input
+                id="name"
+                placeholder="e.g. Grocery"
+                {...form.register('name')}
+                className="h-9 text-sm"
               />
+              {errors.name && (
+                <p className="text-xs text-red-500">{errors.name.message}</p>
+              )}
             </div>
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="amount" className="text-xs font-medium">Amount</Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                {...form.register('amount', { valueAsNumber: true })}
+                className="h-9 text-sm"
+              />
+              {errors.amount && (
+                <p className="text-xs text-red-500">{errors.amount.message}</p>
+              )}
+            </div>
+          </div>
 
-            {/* Enhanced Footer */}
-            <DialogFooter className="flex-col sm:flex-row gap-3 pt-6 border-t border-gray-100">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={onClose}
-                className="w-full sm:w-auto border-gray-300 hover:bg-gray-50 text-gray-700"
+          {/* Row 2: Date + Type + Account */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="date" className="text-xs font-medium">Date</Label>
+              <Input
+                id="date"
+                type="date"
+                {...form.register('date')}
+                className="h-9 text-sm"
+              />
+              {errors.date && (
+                <p className="text-xs text-red-500">{errors.date.message}</p>
+              )}
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="type" className="text-xs font-medium">Type</Label>
+              <Select 
+                value={form.watch('type')} 
+                onValueChange={(v) => form.setValue('type', v as 'Income' | 'Expense')}
               >
-                Cancel
-              </Button>
-              <LoadingButton
-                type="submit"
-                isLoading={isSubmitting}
-                loadingText={mode === 'create' ? 'Creating...' : 'Saving...'}
-                className="w-full sm:w-auto bg-[#635BFF] hover:bg-[#5851EA] text-white shadow-md hover:shadow-lg transition-all"
+                <SelectTrigger id="type" className="h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {transactionTypes.map(t => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label htmlFor="account" className="text-xs font-medium">Account</Label>
+              <Select 
+                value={form.watch('account_type')} 
+                onValueChange={(v) => form.setValue('account_type', v)}
               >
-                {mode === 'create' ? 'Create Transaction' : 'Save Changes'}
-              </LoadingButton>
-            </DialogFooter>
-          </form>
-        </Form>
+                <SelectTrigger id="account" className="h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {accountTypes.map(t => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Row 3: Category */}
+          <div className="space-y-1.5">
+            <Label htmlFor="category" className="text-xs font-medium">Category</Label>
+            <Select 
+              value={form.watch('category_id')} 
+              onValueChange={(v) => form.setValue('category_id', v)}
+              disabled={categoriesLoading}
+            >
+              <SelectTrigger id="category" className="h-9 text-sm">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories?.map(c => (
+                  <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.category_id && (
+              <p className="text-xs text-red-500">{errors.category_id.message}</p>
+            )}
+          </div>
+
+          {/* Row 4: Description (optional) */}
+          <div className="space-y-1.5">
+            <Label htmlFor="description" className="text-xs font-medium text-muted-foreground">
+              Description <span className="text-muted-foreground/60">(optional)</span>
+            </Label>
+            <Input
+              id="description"
+              placeholder="Add notes..."
+              {...form.register('description')}
+              className="h-9 text-sm"
+            />
+          </div>
+
+          <DialogFooter className="pt-4 gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onClose}
+              className="h-9 text-sm"
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit"
+              className="h-9 text-sm bg-[#635BFF] hover:bg-[#5851EA]"
+              disabled={isSubmitting || categoriesLoading}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  {mode === 'create' ? 'Creating...' : 'Saving...'}
+                </>
+              ) : (
+                mode === 'create' ? 'Create' : 'Save'
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
 }
+
+export default TransactionDialog;

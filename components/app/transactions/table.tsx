@@ -302,8 +302,12 @@ export function TransactionsTable({
       <TransactionDialog
         isOpen={isTransactionDialogOpen}
         onClose={closeTransactionDialog}
-        onSubmit={handleTransactionSubmit}
-        initialData={transactionDialogData}
+        initialData={transactionDialogData ? {
+          ...transactionDialogData,
+          date: transactionDialogData.date instanceof Date 
+            ? transactionDialogData.date.toISOString().split('T')[0]
+            : transactionDialogData.date,
+        } : undefined}
         mode="edit"
       />
       

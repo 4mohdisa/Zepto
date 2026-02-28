@@ -3,6 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '@/context/auth-context'
 
+// Simple cache for transactions
+const transactionsCache = new Map<string, { data: Transaction[]; timestamp: number; nextCursor: string | null; hasNextPage: boolean }>()
+const CACHE_STALE_TIME = 30 * 1000 // 30 seconds
+
 interface Transaction {
   id: number
   user_id: string
@@ -45,6 +49,8 @@ interface UseTransactionsReturn {
   clearSelection: () => void
   bulkDelete: (ids: number[]) => Promise<void>
   bulkUpdateCategory: (ids: number[], categoryId: string) => Promise<void>
+  updateTransaction: (id: number, data: Partial<Transaction>) => Promise<void>
+  deleteTransaction: (id: number) => Promise<void>
 }
 
 export function useTransactions(): UseTransactionsReturn {
@@ -74,9 +80,36 @@ export function useTransactions(): UseTransactionsReturn {
   const abortControllerRef = useRef<AbortController | null>(null)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Generate cache key from state
+  const getCacheKey = useCallback(() => {
+    return JSON.stringify({
+      dateFrom: state.dateFrom,
+      dateTo: state.dateTo,
+      search: state.search,
+      categoryId: state.categoryId,
+      typeOrder: state.typeOrder,
+    })
+  }, [state])
+
   // Fetch transactions
-  const fetchTransactions = useCallback(async (isInitial = true) => {
+  const fetchTransactions = useCallback(async (isInitial = true, forceRefresh = false) => {
     if (!user?.id) return
+
+    const cacheKey = getCacheKey()
+    const now = Date.now()
+    const cached = transactionsCache.get(cacheKey)
+
+    // Use cache if available and not stale (for initial fetch only)
+    if (isInitial && cached && !forceRefresh) {
+      const isStale = now - cached.timestamp > CACHE_STALE_TIME
+      if (!isStale) {
+        setTransactions(cached.data)
+        setCursor(cached.nextCursor)
+        setHasNextPage(cached.hasNextPage)
+        setLoading(false)
+        return
+      }
+    }
 
     // Cancel any in-flight request
     if (abortControllerRef.current) {
@@ -114,8 +147,25 @@ export function useTransactions(): UseTransactionsReturn {
 
       if (isInitial) {
         setTransactions(data.rows)
+        // Update cache
+        transactionsCache.set(cacheKey, {
+          data: data.rows,
+          timestamp: Date.now(),
+          nextCursor: data.nextCursor,
+          hasNextPage: data.hasNextPage,
+        })
       } else {
-        setTransactions((prev) => [...prev, ...data.rows])
+        setTransactions((prev) => {
+          const newData = [...prev, ...data.rows]
+          // Update cache with merged data
+          transactionsCache.set(cacheKey, {
+            data: newData,
+            timestamp: Date.now(),
+            nextCursor: data.nextCursor,
+            hasNextPage: data.hasNextPage,
+          })
+          return newData
+        })
       }
 
       setCursor(data.nextCursor)
@@ -131,7 +181,7 @@ export function useTransactions(): UseTransactionsReturn {
         setIsFetchingNextPage(false)
       }
     }
-  }, [user?.id, state, cursor])
+  }, [user?.id, state, cursor, getCacheKey])
 
   // Initial fetch and refetch on filter changes
   useEffect(() => {
@@ -197,6 +247,11 @@ export function useTransactions(): UseTransactionsReturn {
     setSelectedIds(new Set())
   }, [])
 
+  // Invalidate all transaction caches (call after mutations)
+  const invalidateCache = useCallback(() => {
+    transactionsCache.clear()
+  }, [])
+
   // Bulk actions
   const bulkDelete = useCallback(async (ids: number[]) => {
     if (!user?.id || ids.length === 0) return
@@ -214,12 +269,14 @@ export function useTransactions(): UseTransactionsReturn {
 
       // Remove deleted transactions from state
       setTransactions((prev) => prev.filter((t) => !ids.includes(t.id)))
+      // Invalidate cache to ensure consistency
+      invalidateCache()
       clearSelection()
     } catch (err) {
       console.error('Bulk delete error:', err)
       throw err
     }
-  }, [user?.id, clearSelection])
+  }, [user?.id, clearSelection, invalidateCache])
 
   const bulkUpdateCategory = useCallback(async (ids: number[], categoryId: string) => {
     if (!user?.id || ids.length === 0) return
@@ -235,14 +292,73 @@ export function useTransactions(): UseTransactionsReturn {
         throw new Error('Failed to update transactions')
       }
 
-      // Refresh to get updated data
-      await fetchTransactions(true)
+      // Invalidate cache and refresh to get updated data
+      invalidateCache()
+      await fetchTransactions(true, true) // force refresh
       clearSelection()
     } catch (err) {
       console.error('Bulk update error:', err)
       throw err
     }
-  }, [user?.id, fetchTransactions, clearSelection])
+  }, [user?.id, fetchTransactions, clearSelection, invalidateCache])
+
+  // Single transaction update
+  const updateTransaction = useCallback(async (id: number, data: Partial<Transaction>) => {
+    if (!user?.id) return
+
+    try {
+      const response = await fetch(`/api/transactions`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...data }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update transaction')
+      }
+
+      // Update local state
+      setTransactions((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, ...data } : t))
+      )
+      // Invalidate cache to ensure consistency
+      invalidateCache()
+    } catch (err) {
+      console.error('Update transaction error:', err)
+      throw err
+    }
+  }, [user?.id, invalidateCache])
+
+  // Single transaction delete
+  const deleteTransaction = useCallback(async (id: number) => {
+    if (!user?.id) return
+
+    try {
+      const response = await fetch('/api/transactions/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionIds: [id] }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete transaction')
+      }
+
+      // Remove from local state
+      setTransactions((prev) => prev.filter((t) => t.id !== id))
+      // Remove from selection if selected
+      setSelectedIds((prev) => {
+        const newSet = new Set(prev)
+        newSet.delete(id)
+        return newSet
+      })
+      // Invalidate cache to ensure consistency
+      invalidateCache()
+    } catch (err) {
+      console.error('Delete transaction error:', err)
+      throw err
+    }
+  }, [user?.id, invalidateCache])
 
   // State setters
   const setDateFrom = useCallback((date: string) => {
@@ -272,7 +388,7 @@ export function useTransactions(): UseTransactionsReturn {
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-    refetch: () => fetchTransactions(true),
+    refetch: () => fetchTransactions(true, true), // force refresh
     state,
     setDateFrom,
     setDateTo,
@@ -286,5 +402,7 @@ export function useTransactions(): UseTransactionsReturn {
     clearSelection,
     bulkDelete,
     bulkUpdateCategory,
+    updateTransaction,
+    deleteTransaction,
   }
 }

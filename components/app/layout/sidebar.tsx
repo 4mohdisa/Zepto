@@ -18,6 +18,7 @@ import {
   LayoutDashboard, 
   ArrowLeftRight, 
   RefreshCw,
+  Store,
 } from 'lucide-react'
 
 const navItems = [
@@ -35,6 +36,11 @@ const navItems = [
     title: "Recurring", 
     url: "/recurring-transactions", 
     icon: RefreshCw,
+  },
+  { 
+    title: "Merchants", 
+    url: "/merchants", 
+    icon: Store,
   },
 ]
 
