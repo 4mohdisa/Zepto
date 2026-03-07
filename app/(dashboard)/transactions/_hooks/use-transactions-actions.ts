@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
-import { useSupabaseClient } from '@/utils/supabase/client'
-import { UpdateTransaction } from '@/app/types/transaction'
+import { useSupabaseClient } from '@/lib/supabase/client'
+import { UpdateTransaction } from '@/types/transaction'
 import { DateRange } from "react-day-picker"
 
 interface UseTransactionsActionsProps {

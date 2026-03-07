@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { categories } from '@/data/categories'
+import { categories } from '@/constants/categories'
 import { cn } from '@/lib/utils'
 
 interface BulkActionsBarProps {

@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -30,6 +31,14 @@ export function TransactionAnalysisChart({
   loading,
   className,
 }: TransactionAnalysisChartProps) {
+  // Memoize data transformation to prevent re-calculation on every render
+  const formattedData = useMemo(() => {
+    return data.map((d) => ({
+      ...d,
+      day: d.date.split('-')[2],
+    }))
+  }, [data])
+
   if (loading) {
     return (
       <Card className={cn("h-[350px] sm:h-[400px]", className)}>
@@ -55,12 +64,6 @@ export function TransactionAnalysisChart({
       </Card>
     )
   }
-
-  // Format date for display (show day only)
-  const formattedData = data.map((d) => ({
-    ...d,
-    day: d.date.split('-')[2],
-  }))
 
   return (
     <Card className={cn("h-[350px] sm:h-[400px] flex flex-col", className)}>

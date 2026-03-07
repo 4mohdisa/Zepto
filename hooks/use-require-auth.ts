@@ -1,6 +1,6 @@
 'use client'
 
-import { useAuth } from '@/context/auth-context'
+import { useAuth } from '@/providers'
 
 export function useRequireAuth() {
   const { user, isLoaded } = useAuth()

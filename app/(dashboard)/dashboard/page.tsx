@@ -7,12 +7,22 @@ import { CurrentBalanceHero } from './_components/current-balance-hero'
 import { KpiRow } from './_components/kpi-row'
 import { Button } from '@/components/ui/button'
 import { Plus, Upload } from 'lucide-react'
-import { useState, Suspense, lazy, useCallback } from 'react'
-import { TransactionDialog } from '@/components/app/transactions/transaction-dialog'
-import { UploadDialog } from '@/components/app/dialogs/upload-dialog'
+import { useState, Suspense, lazy, useCallback, useMemo } from 'react'
+import { TransactionDialog } from '@/features/transactions/components/transaction-dialog'
+import { UploadDialog } from '@/components/dialogs/upload-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SectionErrorBoundary } from '@/components/error-boundary'
 import { toast } from 'sonner'
+import { 
+  pageContainer, 
+  pageContent, 
+  flexBetween, 
+  flexWrap,
+  primaryButton,
+  primaryButtonIcon,
+  secondaryButton,
+  sectionGap 
+} from '@/lib/styles'
 
 // Dynamic imports for heavy chart components
 const TransactionAnalysisChart = lazy(() => 
@@ -48,6 +58,13 @@ export default function DashboardPage() {
   // Use cached data fetching
   const { data, loading, error, refetch } = useDashboardCache(period)
 
+  // Memoize chart data references to prevent unnecessary re-renders
+  const dailySeries = useMemo(() => data?.daily_series || [], [data?.daily_series])
+  const categoryDistribution = useMemo(() => data?.category_distribution || [], [data?.category_distribution])
+  const totalBalance = useMemo(() => data?.total_balance || 0, [data?.total_balance])
+  const balancesByAccount = useMemo(() => data?.balances_by_account || [], [data?.balances_by_account])
+  const kpis = useMemo(() => data?.kpis || null, [data?.kpis])
+
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
 
@@ -64,31 +81,33 @@ export default function DashboardPage() {
   }, [refetch])
 
   return (
-    <div className="min-h-screen bg-gray-50 page-transition">
-      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 max-w-[1400px]">
+    <div className={`${pageContainer} page-transition`}>
+      <div className={pageContent}>
         {/* Header with Period Filter */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className={`${flexBetween} mb-4 sm:mb-6`}>
           <h1 className="text-xl sm:text-2xl font-bold">Dashboard</h1>
           
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <PeriodFilter
-              year={year}
-              month={month}
-              onYearChange={setYear}
-              onMonthChange={setMonth}
-              onPrevious={goToPreviousPeriod}
-              onNext={goToNextPeriod}
-              monthOptions={monthOptions}
-              yearOptions={yearOptions}
-            />
+          <div className={`${flexWrap} overflow-x-auto pb-1 sm:pb-0`}>
+            <div className="flex-shrink-0">
+              <PeriodFilter
+                year={year}
+                month={month}
+                onYearChange={setYear}
+                onMonthChange={setMonth}
+                onPrevious={goToPreviousPeriod}
+                onNext={goToNextPeriod}
+                monthOptions={monthOptions}
+                yearOptions={yearOptions}
+              />
+            </div>
             
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsUploadOpen(true)}
-              className="text-xs sm:text-sm"
+              className={secondaryButton}
             >
-              <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+              <Upload className={primaryButtonIcon} />
               <span className="hidden sm:inline">Import</span>
               <span className="sm:hidden">Import</span>
             </Button>
@@ -96,9 +115,9 @@ export default function DashboardPage() {
             <Button
               size="sm"
               onClick={() => setIsAddTransactionOpen(true)}
-              className="text-xs sm:text-sm"
+              className={primaryButton}
             >
-              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+              <Plus className={primaryButtonIcon} />
               <span className="hidden sm:inline">Add</span>
               <span className="sm:hidden">Add</span>
             </Button>
@@ -116,12 +135,12 @@ export default function DashboardPage() {
         )}
 
         {/* Top Section: Current Balance + KPIs */}
-        <div className="space-y-4 sm:space-y-6 mb-4 sm:mb-6">
+        <div className={`${sectionGap} mb-4 sm:mb-6`}>
           <SectionErrorBoundary sectionName="Current Balance">
             <div className="animate-fade-in-scale">
               <CurrentBalanceHero
-                totalBalance={data?.total_balance || 0}
-                balancesByAccount={data?.balances_by_account || []}
+                totalBalance={totalBalance}
+                balancesByAccount={balancesByAccount}
                 loading={loading}
                 onBalanceUpdate={handleSuccess}
               />
@@ -130,7 +149,7 @@ export default function DashboardPage() {
 
           <SectionErrorBoundary sectionName="KPIs">
             <div className="stagger-children">
-              <KpiRow kpis={data?.kpis || null} loading={loading} />
+              <KpiRow kpis={kpis} loading={loading} />
             </div>
           </SectionErrorBoundary>
         </div>
@@ -140,7 +159,7 @@ export default function DashboardPage() {
           <SectionErrorBoundary sectionName="Transaction Analysis">
             <Suspense fallback={<ChartSkeleton />}>
               <TransactionAnalysisChart
-                data={data?.daily_series || []}
+                data={dailySeries}
                 loading={loading}
               />
             </Suspense>
@@ -149,7 +168,7 @@ export default function DashboardPage() {
           <SectionErrorBoundary sectionName="Category Distribution">
             <Suspense fallback={<ChartSkeleton />}>
               <CategoryDistributionChart
-                data={data?.category_distribution || []}
+                data={categoryDistribution}
                 loading={loading}
               />
             </Suspense>

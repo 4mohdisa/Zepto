@@ -1,8 +1,8 @@
 'use client';
 
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/app/layout/sidebar';
-import { AppHeader } from '@/components/app/layout/header';
+import { AppSidebar } from '@/components/layout/sidebar';
+import { AppHeader } from '@/components/layout/header';
 import { LoadingOverlay } from '@/components/ui/loading-overlay';
 import { useRequireAuth } from '@/hooks/use-require-auth';
 

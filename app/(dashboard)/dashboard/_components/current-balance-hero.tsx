@@ -2,12 +2,12 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrency } from '@/lib/utils/format'
 import { Wallet, Plus } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
-import { BalanceDialog } from '@/components/app/dialogs/balance-dialog'
+import { BalanceDialog } from '@/components/dialogs/balance-dialog'
 
 interface AccountBalance {
   account_type: string

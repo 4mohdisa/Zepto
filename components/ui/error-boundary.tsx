@@ -4,7 +4,7 @@ import React from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Button } from './button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './card'
-import { debugLogger } from '@/utils/debug-logger'
+import { debugLogger } from '@/lib/utils/debug-logger'
 
 interface ErrorBoundaryState {
   hasError: boolean

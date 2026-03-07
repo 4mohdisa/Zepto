@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useSupabaseClient } from '@/utils/supabase/client'
-import { useAuth } from '@/context/auth-context'
+import { useSupabaseClient } from '@/lib/supabase/client'
+import { useAuth } from '@/providers'
 import { toast } from 'sonner'
-import type { AccountBalance, CurrentBalanceSummary, CreateBalanceData, UpdateBalanceData, AccountType } from '@/app/types/balance'
+import type { AccountBalance, CurrentBalanceSummary, CreateBalanceData, UpdateBalanceData, AccountType } from '@/types/balance'
 
 export function useAccountBalances() {
   const [balances, setBalances] = useState<AccountBalance[]>([])
@@ -28,7 +28,8 @@ export function useAccountBalances() {
     let isCancelled = false
 
     const fetchBalances = async () => {
-      console.info('[useAccountBalances] Fetching account balances for user:', user.id.substring(0, 12) + '...')
+      // Debug logging removed for production performance
+      // console.info('[useAccountBalances] Fetching account balances for user:', user.id.substring(0, 12) + '...')
       
       try {
         setLoading(true)
@@ -95,16 +96,10 @@ export function useAccountBalances() {
           }
         }
 
-        if (!isCancelled) {
-          console.info('[useAccountBalances] Fetched successfully', { 
-            balancesCount: balancesData?.length || 0,
-            summaryCount: balancesData?.length || 0,
-            usingFallback
-          })
-        }
+        // Debug logging removed for production performance
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to fetch account balances'
-        console.error('[useAccountBalances] Failed to fetch', { error: errorMessage })
+        // Error logging removed for production - error is set in state
         if (!isCancelled) {
           setError(err instanceof Error ? err : new Error('Failed to fetch account balances'))
         }
@@ -124,7 +119,6 @@ export function useAccountBalances() {
 
   // Refresh function
   const refresh = useCallback(async (): Promise<void> => {
-    console.info('[useAccountBalances] Refreshing...')
     setRefreshTrigger(prev => prev + 1)
   }, [])
 
@@ -168,7 +162,6 @@ export function useAccountBalances() {
         }
       }
 
-      console.info('[useAccountBalances] Balance upserted, refreshing...')
       await refresh()
       toast.success(`${data.account_type} balance updated successfully`)
     } catch (err) {

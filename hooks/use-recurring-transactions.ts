@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useSupabaseClient } from '@/utils/supabase/client'
-import { RecurringTransaction, Transaction } from '@/app/types/transaction'
-import { useAuth } from '@/context/auth-context'
+import { useSupabaseClient } from '@/lib/supabase/client'
+import { RecurringTransaction, Transaction } from '@/types/transaction'
+import { useAuth } from '@/providers'
 import { toast } from 'sonner'
-import { predictUpcomingTransactions } from '@/utils/predict-transactions'
-import { createTransactionService } from '@/app/services/transaction-services'
+import { predictUpcomingTransactions } from '@/lib/utils/predict-transactions'
+import { createTransactionService } from '@/features/transactions/services'
 
 // Cache for recurring transactions
 interface CacheEntry {
@@ -25,6 +25,7 @@ interface UseRecurringTransactionsReturn {
   createRecurringTransaction: (data: Partial<RecurringTransaction>) => Promise<RecurringTransaction>
   updateRecurringTransaction: (id: number | string, data: Partial<RecurringTransaction>) => Promise<void>
   deleteRecurringTransaction: (id: number | string) => Promise<void>
+  generateDueTransactions: () => Promise<number>
 }
 
 export function useRecurringTransactions(): UseRecurringTransactionsReturn {
@@ -42,6 +43,9 @@ export function useRecurringTransactions(): UseRecurringTransactionsReturn {
   const transactionServiceRef = useRef(transactionService)
   transactionServiceRef.current = transactionService
 
+  // Guard to prevent double generation in React Strict Mode
+  const hasGeneratedRef = useRef(false)
+
   // Invalidate cache
   const invalidateCache = useCallback(() => {
     const currentUser = userRef.current
@@ -54,7 +58,6 @@ export function useRecurringTransactions(): UseRecurringTransactionsReturn {
   const fetchRecurringTransactions = useCallback(async (forceRefresh = false) => {
     const currentUser = userRef.current
     if (!currentUser?.id) {
-      console.debug('[useRecurringTransactions] No user ID, skipping fetch')
       return
     }
 
@@ -88,10 +91,7 @@ export function useRecurringTransactions(): UseRecurringTransactionsReturn {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch recurring transactions'
       
-      console.error('[useRecurringTransactions] Failed to fetch recurring transactions', { 
-        error: errorMessage,
-        userId: currentUser.id.substring(0, 12) + '...'
-      })
+      // Error is already set in state, avoid console spam
       
       setError(err instanceof Error ? err : new Error('Failed to fetch recurring transactions'))
       
@@ -165,10 +165,46 @@ export function useRecurringTransactions(): UseRecurringTransactionsReturn {
     }
   }, [refresh, invalidateCache])
 
-  // Initial fetch
+  // Auto-generate due recurring transactions
+  const generateDueTransactions = useCallback(async (): Promise<number> => {
+    const currentUser = userRef.current
+    if (!currentUser?.id) return 0
+
+    try {
+      const response = await fetch('/api/recurring/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        console.error('[useRecurringTransactions] Failed to generate transactions:', error)
+        return 0
+      }
+
+      const result = await response.json()
+      
+      if (result.created > 0) {
+        toast.success(`Created ${result.created} transaction${result.created > 1 ? 's' : ''} from recurring items`)
+      }
+      
+      return result.created || 0
+    } catch (err) {
+      console.error('[useRecurringTransactions] Error generating due transactions:', err)
+      return 0
+    }
+  }, [])
+
+  // Initial fetch - also generate due transactions
   useEffect(() => {
-    if (user?.id) {
-      fetchRecurringTransactions()
+    if (user?.id && !hasGeneratedRef.current) {
+      // Guard to prevent double generation in React Strict Mode
+      hasGeneratedRef.current = true
+      
+      // First generate any due transactions, then fetch the updated list
+      generateDueTransactions().then(() => {
+        fetchRecurringTransactions()
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
@@ -187,6 +223,7 @@ export function useRecurringTransactions(): UseRecurringTransactionsReturn {
     refresh,
     createRecurringTransaction,
     updateRecurringTransaction,
-    deleteRecurringTransaction
+    deleteRecurringTransaction,
+    generateDueTransactions
   }
 }

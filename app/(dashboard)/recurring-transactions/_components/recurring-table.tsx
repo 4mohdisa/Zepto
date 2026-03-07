@@ -20,8 +20,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Plus, Calendar } from 'lucide-react'
-import { RecurringTransaction } from '@/app/types/transaction'
-import { formatCurrency } from '@/utils/format'
+import { RecurringTransaction } from '@/types/transaction'
+import { formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
 
 interface RecurringTableProps {

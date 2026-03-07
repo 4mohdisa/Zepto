@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
-import { generateTransactionHashClient } from '@/utils/csv-validator';
+import { generateTransactionHashClient } from '@/lib/utils/csv-validator';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized', code: 'AUTH_MISSING' },
         { status: 401 }
       );
     }
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
       return NextResponse.json(
-        { error: 'No transactions provided' },
+        { error: 'No transactions provided', code: 'VALIDATION_ERROR' },
         { status: 400 }
       );
     }
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     // Limit batch size
     if (transactions.length > 1000) {
       return NextResponse.json(
-        { error: 'Maximum 1000 transactions allowed per import' },
+        { error: 'Maximum 1000 transactions allowed per import', code: 'VALIDATION_ERROR' },
         { status: 400 }
       );
     }
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     if (checkError) {
       console.error('Duplicate check error:', checkError);
       return NextResponse.json(
-        { error: 'Failed to check for duplicates' },
+        { error: 'Failed to check for duplicates', code: 'DUPLICATE_CHECK_ERROR', details: checkError.message },
         { status: 500 }
       );
     }
@@ -116,6 +116,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           error: 'Failed to import transactions',
+          code: 'IMPORT_ERROR',
           details: insertError.message,
         },
         { status: 500 }
@@ -131,10 +132,10 @@ export async function POST(request: NextRequest) {
       duration: `${duration}ms`,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('CSV import error:', error);
     return NextResponse.json(
-      { error: 'Failed to process import' },
+      { error: 'Failed to process import', code: 'INTERNAL_ERROR', details: error?.message },
       { status: 500 }
     );
   }
@@ -146,7 +147,7 @@ export async function GET(request: NextRequest) {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Unauthorized', code: 'AUTH_MISSING' },
         { status: 401 }
       );
     }
@@ -169,7 +170,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Check error:', error);
       return NextResponse.json(
-        { error: 'Failed to check duplicates' },
+        { error: 'Failed to check duplicates', code: 'DUPLICATE_CHECK_ERROR', details: error.message },
         { status: 500 }
       );
     }
@@ -178,10 +179,10 @@ export async function GET(request: NextRequest) {
       exists: data?.map((t) => t.transaction_hash) || [],
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Check error:', error);
     return NextResponse.json(
-      { error: 'Failed to check duplicates' },
+      { error: 'Failed to check duplicates', code: 'INTERNAL_ERROR', details: error?.message },
       { status: 500 }
     );
   }

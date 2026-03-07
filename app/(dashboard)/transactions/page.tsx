@@ -7,11 +7,19 @@ import { TransactionsTable } from './_components/transactions-table'
 import { Button } from '@/components/ui/button'
 import { Plus, Upload } from 'lucide-react'
 import { useState, useCallback } from 'react'
-import { TransactionDialog } from '@/components/app/transactions/transaction-dialog'
-import { UploadDialog } from '@/components/app/dialogs/upload-dialog'
-import { ConfirmationDialog } from '@/components/app/dialogs/confirmation-dialog'
+import { TransactionDialog } from '@/features/transactions/components/transaction-dialog'
+import { UploadDialog } from '@/components/dialogs/upload-dialog'
+import { ConfirmationDialog } from '@/components/dialogs/confirmation-dialog'
 import { toast } from 'sonner'
 import { invalidateCache } from '@/hooks/use-data-cache'
+import { 
+  pageContainer, 
+  pageContent, 
+  flexBetween, 
+  primaryButton,
+  primaryButtonIcon,
+  secondaryButton 
+} from '@/lib/styles'
 
 // Transaction type matching the one from use-transactions hook
 type Transaction = {
@@ -124,10 +132,10 @@ export default function TransactionsPage() {
   } : undefined
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 max-w-[1400px]">
+    <div className={pageContainer}>
+      <div className={pageContent}>
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className={`${flexBetween} mb-4 sm:mb-6`}>
           <h1 className="text-xl sm:text-2xl font-bold">Transactions</h1>
           
           <div className="flex items-center gap-2">
@@ -135,9 +143,9 @@ export default function TransactionsPage() {
               variant="outline"
               onClick={() => setIsUploadOpen(true)}
               size="sm"
-              className="text-xs sm:text-sm"
+              className={secondaryButton}
             >
-              <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+              <Upload className={primaryButtonIcon} />
               <span className="hidden sm:inline">Import</span>
               <span className="sm:hidden">Import</span>
             </Button>
@@ -145,9 +153,9 @@ export default function TransactionsPage() {
             <Button 
               onClick={() => setIsAddTransactionOpen(true)}
               size="sm"
-              className="text-xs sm:text-sm"
+              className={primaryButton}
             >
-              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+              <Plus className={primaryButtonIcon} />
               <span className="hidden sm:inline">Add Transaction</span>
               <span className="sm:hidden">Add</span>
             </Button>

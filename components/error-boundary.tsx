@@ -2,7 +2,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { debugLogger } from '@/utils/debug-logger';
+import { debugLogger } from '@/lib/utils/debug-logger';
 
 interface Props {
   children: ReactNode;

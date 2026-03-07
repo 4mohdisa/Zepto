@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -38,6 +39,9 @@ export function CategoryDistributionChart({
   loading,
   className,
 }: CategoryDistributionChartProps) {
+  // Memoize top 8 categories to prevent re-slicing on every render
+  const chartData = useMemo(() => data.slice(0, 8), [data])
+
   if (loading) {
     return (
       <Card className={cn("h-[350px] sm:h-[400px]", className)}>
@@ -50,9 +54,6 @@ export function CategoryDistributionChart({
       </Card>
     )
   }
-
-  // Take top 8 categories
-  const chartData = data.slice(0, 8)
 
   if (chartData.length === 0) {
     return (

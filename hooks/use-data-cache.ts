@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { debugLogger } from '@/utils/debug-logger'
+import { debugLogger } from '@/lib/utils/debug-logger'
 
 type CacheEntry<T> = {
   data: T

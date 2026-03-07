@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { ArrowUpDown, Search } from 'lucide-react'
-import { categories } from '@/data/categories'
+import { categories } from '@/constants/categories'
 import { cn } from '@/lib/utils'
 
 interface TransactionFiltersProps {

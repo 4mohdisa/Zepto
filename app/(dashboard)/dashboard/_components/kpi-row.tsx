@@ -1,10 +1,11 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrency } from '@/lib/utils/format'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TrendingUp, TrendingDown, Wallet, PiggyBank } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useMemo } from 'react'
 
 interface KPIData {
   income: number
@@ -19,22 +20,8 @@ interface KpiRowProps {
 }
 
 export function KpiRow({ kpis, loading }: KpiRowProps) {
-  if (loading) {
-    return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {[1, 2, 3, 4].map((i) => (
-          <Card key={i}>
-            <CardContent className="p-4 sm:pt-6">
-              <Skeleton className="h-3 sm:h-4 w-16 sm:w-20 mb-2" />
-              <Skeleton className="h-6 sm:h-8 w-20 sm:w-32" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    )
-  }
-
-  const items = [
+  // Memoize items array to prevent unnecessary re-renders
+  const items = useMemo(() => [
     {
       label: 'Income',
       value: kpis?.income || 0,
@@ -65,7 +52,22 @@ export function KpiRow({ kpis, loading }: KpiRowProps) {
       iconClass: 'text-blue-600 bg-blue-100',
       format: (v: number) => `${v.toFixed(1)}%`,
     },
-  ]
+  ], [kpis])
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i}>
+            <CardContent className="p-4 sm:pt-6">
+              <Skeleton className="h-3 sm:h-4 w-16 sm:w-20 mb-2" />
+              <Skeleton className="h-6 sm:h-8 w-20 sm:w-32" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

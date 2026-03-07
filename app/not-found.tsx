@@ -4,8 +4,8 @@ import React from 'react';
 import Link from 'next/link';
 import { FileQuestion } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { LandingNavbar } from '@/components/app/landing/navbar';
-import { LandingFooter } from '@/components/app/landing/footer';
+import { LandingNavbar } from '@/components/landing/navbar';
+import { LandingFooter } from '@/components/landing/footer';
 
 export default function NotFound() {
   return (

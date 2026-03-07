@@ -3,10 +3,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { LandingNavbar } from '@/components/app/landing/navbar'
-import { LandingFooter } from '@/components/app/landing/footer'
-import { PricingSection } from '@/components/app/landing/pricing-section'
-import { testimonials } from '@/data/testimonials'
+import { LandingNavbar } from '@/components/landing/navbar'
+import { LandingFooter } from '@/components/landing/footer'
+import { PricingSection } from '@/components/landing/pricing-section'
+import { testimonials } from '@/constants/testimonials'
 import { 
   BarChart3, 
   TrendingUp, 

@@ -1,7 +1,7 @@
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
-import { AuthProvider } from '@/context/auth-context';
-import { CacheProvider } from '@/context/cache-context';
+import { AuthProvider } from '@/providers';
+import { CacheProvider } from '@/providers';
 import { ErrorBoundaryWrapper } from '@/components/ui/error-boundary';
 import { DebugProvider, AnalyticsProvider } from '@/components/debug';
 import { DebugPanelWrapper } from '@/components/debug/debug-panel-wrapper';

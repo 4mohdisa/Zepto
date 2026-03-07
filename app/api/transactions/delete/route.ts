@@ -9,14 +9,14 @@ export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth()
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized', code: 'AUTH_MISSING' }, { status: 401 })
     }
 
     const body = await request.json()
     const { transactionId } = body
 
     if (!transactionId) {
-      return NextResponse.json({ error: 'Transaction ID is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Transaction ID is required', code: 'VALIDATION_ERROR' }, { status: 400 })
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -29,12 +29,12 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Delete transaction error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to delete transaction', code: 'DELETE_ERROR', details: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Delete transaction error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, { status: 500 })
   }
 }

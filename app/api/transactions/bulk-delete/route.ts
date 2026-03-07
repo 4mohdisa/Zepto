@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
       return NextResponse.json(
-        { error: 'Invalid transaction IDs' },
+        { error: 'Invalid transaction IDs', code: 'VALIDATION_ERROR' },
         { status: 400 }
       )
     }
@@ -34,20 +34,20 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Bulk delete error:', error)
       return NextResponse.json(
-        { error: 'Failed to delete transactions' },
+        { error: 'Failed to delete transactions', code: 'DELETE_ERROR', details: error.message },
         { status: 500 }
       )
     }
 
     return NextResponse.json({
-      deletedCount: transactionIds.length,
       success: true,
+      deletedCount: transactionIds.length,
     })
 
   } catch (error) {
     console.error('Bulk delete API error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }
     )
   }

@@ -1,41 +1,38 @@
 'use client'
 
-import { useMerchants } from '@/hooks/use-merchants'
+import { useMerchants, Merchant } from '@/hooks/use-merchants'
 import { Input } from '@/components/ui/input'
-import { Search, Store, ArrowUpDown, Calendar, Hash, AlertCircle, Database, Wrench } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Search, Store, ArrowUpDown, Calendar, Hash, AlertCircle, Database, Wrench, Server, Loader2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
+import { pageContainer, pageContent, pageHeading, bodyText, gridCols2 } from '@/lib/styles'
 
-export default function MerchantsPage() {
-  const { 
-    loading, 
-    error, 
-    errorType,
-    filteredMerchants, 
-    searchQuery, 
-    setSearchQuery,
-    refetch 
-  } = useMerchants()
+// Skeleton loader for merchants list
+function MerchantsSkeleton() {
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+      <div className="divide-y divide-gray-100">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div>
+                <Skeleton className="h-4 w-32 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+            <Skeleton className="h-4 w-16" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
-  const renderErrorState = () => {
-    if (!error) return null
-
-    // Table missing - show setup instructions
-    if (errorType === 'TABLE_MISSING') {
-      return (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
-          <div className="flex items-start gap-3">
-            <Database className="h-5 w-5 text-amber-600 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="font-medium text-amber-900">Merchants table not found</h3>
-              <p className="text-amber-700 text-sm mt-1">{error}</p>
-              
-              <div className="mt-4 bg-amber-100/50 rounded-md p-3">
-                <p className="text-xs font-medium text-amber-800 mb-2">Run this SQL in Supabase:</p>
-                <pre className="text-xs text-amber-900 overflow-x-auto whitespace-pre-wrap">
-{`-- Create merchants table
+const MERCHANTS_SETUP_SQL = `-- Create merchants table with TEXT user_id for Clerk compatibility
 CREATE TABLE IF NOT EXISTS merchants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id TEXT NOT NULL,
@@ -48,25 +45,118 @@ CREATE TABLE IF NOT EXISTS merchants (
     CONSTRAINT unique_user_merchant UNIQUE (user_id, normalized_name)
 );
 
--- Indexes
 CREATE INDEX idx_merchants_user_id ON merchants(user_id);
 CREATE INDEX idx_merchants_user_count ON merchants(user_id, transaction_count DESC);
 
--- RLS
 ALTER TABLE merchants ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view own merchants" ON merchants FOR SELECT USING (user_id = auth.uid()::text);
-CREATE POLICY "Users can insert own merchants" ON merchants FOR INSERT WITH CHECK (user_id = auth.uid()::text);
-GRANT ALL ON merchants TO anon, authenticated;`}
-                </pre>
-              </div>
-              
+
+CREATE POLICY "Users can view own merchants" ON merchants 
+    FOR SELECT USING (user_id = auth.uid()::text);
+
+-- Function to auto-create merchants on transaction insert
+CREATE OR REPLACE FUNCTION upsert_merchant_on_transaction()
+RETURNS TRIGGER AS $$
+DECLARE normalized TEXT;
+BEGIN
+    normalized := lower(trim(regexp_replace(NEW.name, '\\s+', ' ', 'g')));
+    IF length(normalized) = 0 THEN RETURN NEW; END IF;
+    INSERT INTO merchants (user_id, merchant_name, normalized_name, transaction_count, last_used_at)
+    VALUES (NEW.user_id, NEW.name, normalized, 1, NEW.date)
+    ON CONFLICT (user_id, normalized_name)
+    DO UPDATE SET
+        transaction_count = merchants.transaction_count + 1,
+        last_used_at = GREATEST(merchants.last_used_at, EXCLUDED.last_used_at),
+        updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_upsert_merchant_on_transaction ON transactions;
+CREATE TRIGGER tr_upsert_merchant_on_transaction
+    AFTER INSERT ON transactions FOR EACH ROW
+    EXECUTE FUNCTION upsert_merchant_on_transaction();
+
+GRANT ALL ON merchants TO anon, authenticated;`
+
+const SCHEMA_FIX_SQL = `-- Fix RLS policies to use Clerk user ID from JWT
+-- The issue: auth.uid() returns a UUID, but we store Clerk IDs (user_xxx)
+-- The fix: Use requesting_user_id() which reads auth.jwt() ->> 'sub'
+
+DROP POLICY IF EXISTS "Users can view own merchants" ON merchants;
+DROP POLICY IF EXISTS "Users can insert own merchants" ON merchants;
+DROP POLICY IF EXISTS "Users can update own merchants" ON merchants;
+DROP POLICY IF EXISTS "Users can delete own merchants" ON merchants;
+
+-- Update the helper function to return Clerk ID from JWT
+CREATE OR REPLACE FUNCTION requesting_user_id()
+RETURNS TEXT AS $$
+BEGIN
+    RETURN auth.jwt() ->> 'sub';  -- Clerk stores user ID in 'sub' claim
+EXCEPTION
+    WHEN OTHERS THEN RETURN NULL;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- Recreate policies with correct function
+CREATE POLICY "Users can view own merchants" ON merchants 
+    FOR SELECT USING (requesting_user_id() = user_id);
+CREATE POLICY "Users can insert own merchants" ON merchants 
+    FOR INSERT WITH CHECK (requesting_user_id() = user_id);
+CREATE POLICY "Users can update own merchants" ON merchants 
+    FOR UPDATE USING (requesting_user_id() = user_id);
+CREATE POLICY "Users can delete own merchants" ON merchants 
+    FOR DELETE USING (requesting_user_id() = user_id);`
+
+export default function MerchantsPage() {
+  const { 
+    loading, 
+    error, 
+    filteredMerchants, 
+    merchants,
+    searchQuery, 
+    setSearchQuery,
+    refetch,
+    runBackfill,
+    backfillStatus,
+    isBackfilling,
+    lastFetchDuration,
+    cacheMetadata
+  } = useMerchants()
+  
+  // Check if we're refreshing while having cached data
+  const isRefreshing = cacheMetadata.isFetching && filteredMerchants.length > 0
+  
+  const handleBackfill = async () => {
+    try {
+      await runBackfill()
+      toast.success('Merchants imported successfully')
+    } catch (err: any) {
+      toast.error(err.message || 'Import failed')
+    }
+  }
+
+  const renderErrorState = () => {
+    if (!error) return null
+
+    // API Route Missing
+    if (error.code === 'API_ROUTE_MISSING') {
+      return (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+          <div className="flex items-start gap-3">
+            <Server className="h-5 w-5 text-red-600 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-red-900">API Route Not Found</h3>
+              <p className="text-red-700 text-sm mt-1">{error.message}</p>
+              <p className="text-xs text-red-600 mt-2">
+                The /api/merchants endpoint is not accessible. Try restarting the dev server.
+              </p>
               <Button 
                 onClick={refetch} 
                 variant="outline" 
                 size="sm" 
-                className="mt-4 border-amber-300 text-amber-800 hover:bg-amber-100"
+                className="mt-3 border-red-300 text-red-800 hover:bg-red-100"
               >
-                Retry After Setup
+                Retry
               </Button>
             </div>
           </div>
@@ -74,34 +164,73 @@ GRANT ALL ON merchants TO anon, authenticated;`}
       )
     }
 
-    // Schema mismatch - show fix instructions
-    if (errorType === 'SCHEMA_MISMATCH') {
+    // Table Missing
+    if (error.code === 'TABLE_MISSING') {
+      return (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-6">
+          <div className="flex items-start gap-3">
+            <Database className="h-5 w-5 text-amber-600 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-medium text-amber-900">Merchants Table Not Found</h3>
+              <p className="text-amber-700 text-sm mt-1">{error.message}</p>
+              
+              <div className="mt-4 bg-amber-100/50 rounded-md p-3">
+                <p className="text-xs font-medium text-amber-800 mb-2">Run this SQL in Supabase:</p>
+                <pre className="text-xs text-amber-900 overflow-x-auto whitespace-pre-wrap font-mono bg-amber-100 p-2 rounded">
+                  {MERCHANTS_SETUP_SQL}
+                </pre>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 border-amber-400 text-amber-800 hover:bg-amber-200"
+                  onClick={() => navigator.clipboard.writeText(MERCHANTS_SETUP_SQL)}
+                >
+                  Copy SQL
+                </Button>
+              </div>
+              
+              <div className="mt-4 flex gap-2">
+                <Button 
+                  onClick={refetch} 
+                  variant="outline" 
+                  size="sm" 
+                  className="border-amber-300 text-amber-800 hover:bg-amber-100"
+                >
+                  Retry After Setup
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Schema Mismatch
+    if (error.code === 'SCHEMA_MISMATCH') {
       return (
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
           <div className="flex items-start gap-3">
             <Wrench className="h-5 w-5 text-red-600 mt-0.5" />
             <div className="flex-1">
-              <h3 className="font-medium text-red-900">Schema Mismatch: user_id is UUID</h3>
-              <p className="text-red-700 text-sm mt-1">
-                The merchants table has user_id as UUID type, but Clerk uses string IDs like &quot;user_xxx&quot;.
-              </p>
+              <h3 className="font-medium text-red-900">Schema Mismatch</h3>
+              <p className="text-red-700 text-sm mt-1">{error.message}</p>
+              {error.details && (
+                <p className="text-xs text-red-600 mt-1 font-mono">{error.details}</p>
+              )}
               
               <div className="mt-4 bg-red-100/50 rounded-md p-3">
                 <p className="text-xs font-medium text-red-800 mb-2">Run this SQL to fix:</p>
-                <pre className="text-xs text-red-900 overflow-x-auto whitespace-pre-wrap">
-{`-- Fix: Change user_id from UUID to TEXT
-DROP POLICY IF EXISTS "Users can view own merchants" ON merchants;
-DROP POLICY IF EXISTS "Users can insert own merchants" ON merchants;
-DROP POLICY IF EXISTS "Users can update own merchants" ON merchants;
-DROP POLICY IF EXISTS "Users can delete own merchants" ON merchants;
-
-ALTER TABLE merchants ALTER COLUMN user_id TYPE TEXT USING user_id::TEXT;
-
-CREATE POLICY "Users can view own merchants" ON merchants FOR SELECT USING (user_id = auth.uid()::text);
-CREATE POLICY "Users can insert own merchants" ON merchants FOR INSERT WITH CHECK (user_id = auth.uid()::text);
-CREATE POLICY "Users can update own merchants" ON merchants FOR UPDATE USING (user_id = auth.uid()::text);
-CREATE POLICY "Users can delete own merchants" ON merchants FOR DELETE USING (user_id = auth.uid()::text);`}
+                <pre className="text-xs text-red-900 overflow-x-auto whitespace-pre-wrap font-mono bg-red-100 p-2 rounded">
+                  {SCHEMA_FIX_SQL}
                 </pre>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2 border-red-400 text-red-800 hover:bg-red-200"
+                  onClick={() => navigator.clipboard.writeText(SCHEMA_FIX_SQL)}
+                >
+                  Copy Fix SQL
+                </Button>
               </div>
               
               <Button 
@@ -118,18 +247,18 @@ CREATE POLICY "Users can delete own merchants" ON merchants FOR DELETE USING (us
       )
     }
 
-    // Permission denied
-    if (errorType === 'PERMISSION_DENIED') {
+    // Permission Denied
+    if (error.code === 'PERMISSION_DENIED') {
       return (
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
             <div>
               <h3 className="font-medium text-orange-900">Permission Denied</h3>
-              <p className="text-orange-700 text-sm mt-1">{error}</p>
-              <p className="text-xs text-orange-600 mt-2">
-                RLS policies may be blocking access. Check that policies use auth.uid()::text for Clerk compatibility.
-              </p>
+              <p className="text-orange-700 text-sm mt-1">{error.message}</p>
+              {error.details && (
+                <p className="text-xs text-orange-600 mt-1">{error.details}</p>
+              )}
               <Button 
                 onClick={refetch} 
                 variant="outline" 
@@ -144,19 +273,25 @@ CREATE POLICY "Users can delete own merchants" ON merchants FOR DELETE USING (us
       )
     }
 
-    // Unknown error
+    // Unknown/Other errors
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
         <div className="flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+          <AlertCircle className="h-5 w-5 text-gray-600 mt-0.5" />
           <div>
-            <h3 className="font-medium text-red-900">Error loading merchants</h3>
-            <p className="text-red-700 text-sm mt-1">{error}</p>
+            <h3 className="font-medium text-gray-900">Error Loading Merchants</h3>
+            <p className="text-gray-700 text-sm mt-1">{error.message}</p>
+            {error.code && (
+              <p className="text-xs text-gray-500 mt-1">Code: {error.code}</p>
+            )}
+            {error.details && (
+              <p className="text-xs text-gray-500 mt-1 font-mono">{error.details}</p>
+            )}
             <Button 
               onClick={refetch} 
               variant="outline" 
               size="sm" 
-              className="mt-2 border-red-300 text-red-800 hover:bg-red-100"
+              className="mt-3"
             >
               Retry
             </Button>
@@ -167,49 +302,78 @@ CREATE POLICY "Users can delete own merchants" ON merchants FOR DELETE USING (us
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 max-w-[1400px]">
+    <div className={pageContainer}>
+      <div className={pageContent}>
         {/* Page Header */}
-        <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Merchants</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Frequently used merchants from your transactions
-          </p>
-        </div>
-
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search merchants..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-white"
-            />
+        <div className="mb-4 sm:mb-6 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className={pageHeading}>Merchants</h1>
+            <p className={`${bodyText} mt-1`}>
+              Frequently used merchants from your transactions
+            </p>
           </div>
         </div>
 
-        {/* Error State with Diagnostics */}
+        {/* Error State */}
         {renderErrorState()}
 
-        {/* Loading State */}
-        {loading && filteredMerchants.length === 0 && !error && (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="divide-y divide-gray-100">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div>
-                      <Skeleton className="h-4 w-32 mb-2" />
-                      <Skeleton className="h-3 w-20" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-4 w-16" />
-                </div>
-              ))}
+        {/* Loading State - Only show when no cached data */}
+        {loading && filteredMerchants.length === 0 && !error && <MerchantsSkeleton />}
+
+        {/* Stats Summary - Show above search/table when merchants exist */}
+        {merchants.length > 0 && !error && (
+          <div className={`mb-6 ${gridCols2} sm:grid-cols-3`}>
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <p className="text-sm text-gray-500">Total Merchants</p>
+              <p className="text-2xl font-semibold text-gray-900">{merchants.length}</p>
             </div>
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <p className="text-sm text-gray-500">Total Transactions</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {merchants.reduce((sum, m) => sum + m.transaction_count, 0)}
+              </p>
+            </div>
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <p className="text-sm text-gray-500">Most Used</p>
+              <p className="text-lg font-medium text-gray-900 truncate">
+                {merchants[0]?.merchant_name || '-'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Refreshing Indicator - when we have data but are revalidating */}
+        {isRefreshing && (
+          <div className="mb-4 flex items-center justify-end">
+            <span className="text-xs text-[#635BFF] flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Refreshing merchants...
+            </span>
+          </div>
+        )}
+
+        {/* Search - Show when merchants exist */}
+        {merchants.length > 0 && !error && (
+          <div className="mb-6 flex gap-2">
+            <div className="relative max-w-md flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search merchants..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-white"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => refetch()}
+              title="Refresh"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </Button>
           </div>
         )}
 
@@ -220,29 +384,60 @@ CREATE POLICY "Users can delete own merchants" ON merchants FOR DELETE USING (us
               <Store className="h-8 w-8 text-[#635BFF]" />
             </div>
             <h3 className="text-gray-900 font-medium mb-1">
-              {searchQuery ? 'No merchants found' : 'No merchants yet'}
+              {searchQuery ? 'No merchants found' : merchants.length === 0 ? 'No merchants found in database' : 'All merchants filtered out'}
             </h3>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 mb-4">
               {searchQuery 
                 ? 'Try adjusting your search'
-                : 'Merchants will appear here as you add transactions'
+                : backfillStatus?.hasTransactions 
+                  ? `Found ${backfillStatus.transactionsCount} transactions but no merchants. Click import to create them.`
+                  : merchants.length === 0 
+                    ? 'No merchants found for your account. Add transactions or run backfill.'
+                    : 'Merchants will appear here as you add transactions'
               }
             </p>
+            
+
+            {!searchQuery && backfillStatus?.needsBackfill && (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-400">
+                  Found {backfillStatus.transactionsCount} transactions that can be imported
+                </p>
+                <Button 
+                  onClick={() => runBackfill()} 
+                  disabled={isBackfilling}
+                  className="bg-[#635BFF] hover:bg-[#5851EA] text-white"
+                >
+                  {isBackfilling ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Database className="h-4 w-4 mr-2" />
+                      Import from Transactions
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
         {/* Merchants List */}
-        {!loading && !error && filteredMerchants.length > 0 && (
+        {(filteredMerchants.length > 0) && !error && (
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden animate-fade-in">
             <div className="divide-y divide-gray-100">
               {filteredMerchants.map((merchant, index) => (
                 <div 
                   key={merchant.id}
                   className={cn(
-                    "p-4 flex items-center justify-between hover:bg-gray-50/80 transition-all duration-200",
-                    "opacity-0 animate-fade-in-up"
+                    "p-4 flex items-center justify-between hover:bg-gray-50/80 transition-all duration-200"
                   )}
-                  style={{ animationDelay: `${Math.min(index * 50, 500)}ms`, animationFillMode: 'forwards' }}
                 >
                   <div className="flex items-center gap-4 min-w-0">
                     {/* Icon */}
@@ -284,28 +479,6 @@ CREATE POLICY "Users can delete own merchants" ON merchants FOR DELETE USING (us
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {/* Stats Summary */}
-        {!loading && !error && filteredMerchants.length > 0 && (
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Total Merchants</p>
-              <p className="text-2xl font-semibold text-gray-900">{filteredMerchants.length}</p>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Total Transactions</p>
-              <p className="text-2xl font-semibold text-gray-900">
-                {filteredMerchants.reduce((sum, m) => sum + m.transaction_count, 0)}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <p className="text-sm text-gray-500">Most Used</p>
-              <p className="text-lg font-medium text-gray-900 truncate">
-                {filteredMerchants[0]?.merchant_name || '-'}
-              </p>
             </div>
           </div>
         )}

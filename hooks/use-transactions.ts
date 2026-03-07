@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useAuth } from '@/context/auth-context'
+import { useAuth } from '@/providers'
+import { invalidateMerchantsCache } from '@/hooks/use-merchants'
 
 // Simple cache for transactions
 const transactionsCache = new Map<string, { data: Transaction[]; timestamp: number; nextCursor: string | null; hasNextPage: boolean }>()
@@ -271,6 +272,8 @@ export function useTransactions(): UseTransactionsReturn {
       setTransactions((prev) => prev.filter((t) => !ids.includes(t.id)))
       // Invalidate cache to ensure consistency
       invalidateCache()
+      // Invalidate merchants cache - deletion affects merchant counts
+      invalidateMerchantsCache(user.id)
       clearSelection()
     } catch (err) {
       console.error('Bulk delete error:', err)
@@ -294,6 +297,8 @@ export function useTransactions(): UseTransactionsReturn {
 
       // Invalidate cache and refresh to get updated data
       invalidateCache()
+      // Invalidate merchants cache - category update may affect merchant data
+      invalidateMerchantsCache(user.id)
       await fetchTransactions(true, true) // force refresh
       clearSelection()
     } catch (err) {
@@ -323,6 +328,8 @@ export function useTransactions(): UseTransactionsReturn {
       )
       // Invalidate cache to ensure consistency
       invalidateCache()
+      // Invalidate merchants cache - update may affect merchant name/count
+      invalidateMerchantsCache(user.id)
     } catch (err) {
       console.error('Update transaction error:', err)
       throw err
@@ -354,6 +361,8 @@ export function useTransactions(): UseTransactionsReturn {
       })
       // Invalidate cache to ensure consistency
       invalidateCache()
+      // Invalidate merchants cache - deletion affects merchant counts
+      invalidateMerchantsCache(user.id)
     } catch (err) {
       console.error('Delete transaction error:', err)
       throw err

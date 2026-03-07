@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import { createBrowserClient } from '@supabase/ssr'
 import { useDebug, useDebugLogger } from './debug-provider'
-import { AnalyticsDashboard } from './analytics-dashboard'
 import { 
   Bug, 
   X, 
@@ -431,7 +430,7 @@ export function EnhancedDebugPanel() {
             </TabsTrigger>
             <TabsTrigger value="auth" className="text-xs">Auth</TabsTrigger>
             <TabsTrigger value="database" className="text-xs">Database</TabsTrigger>
-            <TabsTrigger value="analytics" className="text-xs">Analytics</TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="overview" className="mt-0 flex-1 overflow-auto p-4 space-y-4">
@@ -805,9 +804,7 @@ export function EnhancedDebugPanel() {
             </div>
           </TabsContent>
 
-          <TabsContent value="analytics" className="mt-0 flex-1 flex flex-col min-h-0 overflow-hidden">
-            <AnalyticsDashboard />
-          </TabsContent>
+
         </Tabs>
       )}
     </Card>

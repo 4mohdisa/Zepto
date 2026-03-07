@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth()
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized', code: 'AUTH_MISSING' }, { status: 401 })
     }
 
     const body = await request.json()
@@ -17,22 +17,22 @@ export async function POST(request: NextRequest) {
 
     // Validation
     if (!name || typeof name !== 'string') {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Name is required', code: 'VALIDATION_ERROR' }, { status: 400 })
     }
     if (!amount || typeof amount !== 'number' || amount <= 0) {
-      return NextResponse.json({ error: 'Amount must be greater than 0' }, { status: 400 })
+      return NextResponse.json({ error: 'Amount must be greater than 0', code: 'VALIDATION_ERROR' }, { status: 400 })
     }
     if (!date || typeof date !== 'string') {
-      return NextResponse.json({ error: 'Date is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Date is required', code: 'VALIDATION_ERROR' }, { status: 400 })
     }
     if (!type || !['Income', 'Expense'].includes(type)) {
-      return NextResponse.json({ error: 'Type must be Income or Expense' }, { status: 400 })
+      return NextResponse.json({ error: 'Type must be Income or Expense', code: 'VALIDATION_ERROR' }, { status: 400 })
     }
     if (!account_type || typeof account_type !== 'string') {
-      return NextResponse.json({ error: 'Account is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Account is required', code: 'VALIDATION_ERROR' }, { status: 400 })
     }
     if (!category_id || typeof category_id !== 'number') {
-      return NextResponse.json({ error: 'Category is required' }, { status: 400 })
+      return NextResponse.json({ error: 'Category is required', code: 'VALIDATION_ERROR' }, { status: 400 })
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -65,12 +65,12 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('Create transaction error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to create transaction', code: 'CREATE_ERROR', details: error.message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, data })
   } catch (error) {
     console.error('Create transaction error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'INTERNAL_ERROR' }, { status: 500 })
   }
 }

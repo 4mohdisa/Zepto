@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { RecurringTransaction } from '@/app/types/transaction'
+import { RecurringTransaction } from '@/types/transaction'
 
 // Hooks
 import { useRecurringTransactions } from '@/hooks/use-recurring-transactions'
 import { invalidateCache } from '@/hooks/use-data-cache'
 
 // Components
-import { RecurringTransactionDialog } from '@/components/app/transactions/recurring-dialog'
+import { RecurringTransactionDialog } from '@/features/transactions/components/recurring-dialog'
 import { RecurringTable } from './_components/recurring-table'
 import { UpcomingTransactionsSection } from './_components/upcoming-transactions-section'
-import { ConfirmationDialog } from '@/components/app/dialogs/confirmation-dialog'
+import { ConfirmationDialog } from '@/components/dialogs/confirmation-dialog'
 import { toast } from 'sonner'
 
 export default function RecurringTransactionsPage() {

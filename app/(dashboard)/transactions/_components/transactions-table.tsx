@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useCallback, memo } from 'react'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrency } from '@/lib/utils/format'
 import { format } from 'date-fns'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Loader2, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
@@ -83,18 +83,18 @@ const TransactionRow = memo(function TransactionRow({
       onClick={handleRowClick}
       className="border-b border-gray-100 hover:bg-gray-50/80 transition-colors cursor-pointer"
     >
-      <td className="px-3 sm:px-4 py-3" onClick={(e) => e.stopPropagation()}>
+      <td className="px-3 py-3 w-10" onClick={(e) => e.stopPropagation()}>
         <Checkbox
           checked={isSelected}
           onCheckedChange={() => onToggleSelection(transaction.id)}
           aria-label={`Select transaction ${transaction.name}`}
         />
       </td>
-      <td className="px-3 sm:px-4 py-3 text-sm whitespace-nowrap">
+      <td className="px-3 py-3 text-sm whitespace-nowrap w-28">
         {format(new Date(transaction.date), 'MMM d, yyyy')}
       </td>
-      <td className="px-3 sm:px-4 py-3">
-        <div className="max-w-[120px] sm:max-w-[200px]">
+      <td className="px-3 py-3 w-[35%] min-w-0">
+        <div className="min-w-0">
           <p className="text-sm font-medium truncate" title={transaction.name}>
             {transaction.name}
           </p>
@@ -108,19 +108,19 @@ const TransactionRow = memo(function TransactionRow({
           )}
         </div>
       </td>
-      <td className="px-3 sm:px-4 py-3 text-sm">
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+      <td className="px-3 py-3 w-28">
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 truncate max-w-full">
           {transaction.categories?.name || 'Uncategorized'}
         </span>
       </td>
       <td className={cn(
-        "px-3 sm:px-4 py-3 text-sm text-right font-medium whitespace-nowrap",
+        "px-3 py-3 text-sm text-right font-medium whitespace-nowrap w-28",
         transaction.type === 'Income' ? 'text-green-600' : 'text-red-600'
       )}>
         {transaction.type === 'Income' ? '+' : '-'}
         {formatCurrency(transaction.amount)}
       </td>
-      <td className="px-3 sm:px-4 py-3 text-center">
+      <td className="px-3 py-3 text-center w-16">
         <span className={cn(
           "inline-flex px-2 py-0.5 rounded-full text-xs font-medium",
           transaction.type === 'Income'
@@ -130,7 +130,7 @@ const TransactionRow = memo(function TransactionRow({
           {transaction.type === 'Income' ? 'In' : 'Ex'}
         </span>
       </td>
-      <td className="px-3 sm:px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+      <td className="px-3 py-3 text-right w-14" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -182,11 +182,12 @@ export function TransactionsTable({
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
+        // Only trigger if element is intersecting, has next page, and not already fetching
         if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
           onLoadMore()
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1, rootMargin: '50px' }
     )
 
     if (loadMoreRef.current) {
@@ -200,34 +201,32 @@ export function TransactionsTable({
   if (loading && transactions.length === 0) {
     return (
       <div className="border rounded-lg overflow-hidden bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] table-fixed">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="w-10 px-3 sm:px-4 py-3"><Skeleton className="h-4 w-4" /></th>
-                <th className="px-3 sm:px-4 py-3 w-28"><Skeleton className="h-4 w-16" /></th>
-                <th className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-20" /></th>
-                <th className="px-3 sm:px-4 py-3 w-32"><Skeleton className="h-4 w-16" /></th>
-                <th className="px-3 sm:px-4 py-3 w-28"><Skeleton className="h-4 w-16" /></th>
-                <th className="px-3 sm:px-4 py-3 w-16"><Skeleton className="h-4 w-12" /></th>
-                <th className="px-3 sm:px-4 py-3 w-14"><Skeleton className="h-4 w-8" /></th>
+        <table className="w-full table-fixed">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              <th className="w-10 px-3 py-3"><Skeleton className="h-4 w-4" /></th>
+              <th className="px-3 py-3 w-28"><Skeleton className="h-4 w-16" /></th>
+              <th className="px-3 py-3 w-[35%]"><Skeleton className="h-4 w-20" /></th>
+              <th className="px-3 py-3 w-28"><Skeleton className="h-4 w-16" /></th>
+              <th className="px-3 py-3 w-28"><Skeleton className="h-4 w-16" /></th>
+              <th className="px-3 py-3 w-16"><Skeleton className="h-4 w-12" /></th>
+              <th className="px-3 py-3 w-14"><Skeleton className="h-4 w-8" /></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <tr key={i} className="border-b border-gray-100">
+                <td className="px-3 py-3"><Skeleton className="h-4 w-4" /></td>
+                <td className="px-3 py-3"><Skeleton className="h-4 w-20" /></td>
+                <td className="px-3 py-3"><Skeleton className="h-4 w-32" /></td>
+                <td className="px-3 py-3"><Skeleton className="h-4 w-20" /></td>
+                <td className="px-3 py-3"><Skeleton className="h-4 w-16" /></td>
+                <td className="px-3 py-3"><Skeleton className="h-4 w-8" /></td>
+                <td className="px-3 py-3"><Skeleton className="h-4 w-8" /></td>
               </tr>
-            </thead>
-            <tbody className="divide-y">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i} className="border-b border-gray-100">
-                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-4" /></td>
-                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-20" /></td>
-                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-32" /></td>
-                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-20" /></td>
-                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-16" /></td>
-                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-8" /></td>
-                  <td className="px-3 sm:px-4 py-3"><Skeleton className="h-4 w-8" /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     )
   }
@@ -246,56 +245,53 @@ export function TransactionsTable({
 
   return (
     <div className="border rounded-lg overflow-hidden bg-white animate-fade-in">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] table-fixed">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="w-10 px-3 sm:px-4 py-3">
-                <Checkbox
-                  checked={allSelected}
-                  ref={(el) => {
-                    if (el) {
-                      (el as HTMLInputElement).indeterminate = someSelected && !allSelected
-                    }
-                  }}
-                  onCheckedChange={onSelectAll}
-                  aria-label="Select all transactions"
-                />
-              </th>
-              <th className="px-3 sm:px-4 py-3 text-left text-sm font-medium text-gray-700 w-28">Date</th>
-              <th className="px-3 sm:px-4 py-3 text-left text-sm font-medium text-gray-700">Name</th>
-              <th className="px-3 sm:px-4 py-3 text-left text-sm font-medium text-gray-700 w-32">Category</th>
-              <th className="px-3 sm:px-4 py-3 text-right text-sm font-medium text-gray-700 w-28">Amount</th>
-              <th className="px-3 sm:px-4 py-3 text-center text-sm font-medium text-gray-700 w-16">Type</th>
-              <th className="px-3 sm:px-4 py-3 text-right text-sm font-medium text-gray-700 w-14">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {transactions.map((transaction) => (
-              <TransactionRow
-                key={transaction.id}
-                transaction={transaction}
-                isSelected={selectedIds.has(transaction.id)}
-                onToggleSelection={onToggleSelection}
-                onEdit={onEdit}
-                onDelete={onDelete}
+      <table className="w-full table-fixed">
+        <thead className="bg-gray-50 border-b">
+          <tr>
+            <th className="w-10 px-3 py-3">
+              <Checkbox
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) {
+                    (el as HTMLInputElement).indeterminate = someSelected && !allSelected
+                  }
+                }}
+                onCheckedChange={onSelectAll}
+                aria-label="Select all transactions"
               />
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </th>
+            <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-28">Date</th>
+            <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-[35%]">Name</th>
+            <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-28">Category</th>
+            <th className="px-3 py-3 text-right text-sm font-medium text-gray-700 w-28">Amount</th>
+            <th className="px-3 py-3 text-center text-sm font-medium text-gray-700 w-16">Type</th>
+            <th className="px-3 py-3 text-right text-sm font-medium text-gray-700 w-14">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {transactions.map((transaction) => (
+            <TransactionRow
+              key={transaction.id}
+              transaction={transaction}
+              isSelected={selectedIds.has(transaction.id)}
+              onToggleSelection={onToggleSelection}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </tbody>
+      </table>
 
-      {/* Loading indicator / Load more trigger */}
+      {/* Load more trigger - only render if there's potentially more data */}
       <div ref={loadMoreRef} className="py-4 text-center border-t">
-        {isFetchingNextPage && (
+        {isFetchingNextPage ? (
           <div className="flex items-center justify-center gap-2 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-sm">Loading more...</span>
           </div>
-        )}
-        {!hasNextPage && transactions.length > 0 && (
+        ) : !hasNextPage && transactions.length > 0 ? (
           <span className="text-sm text-muted-foreground">No more transactions</span>
-        )}
+        ) : null}
       </div>
     </div>
   )

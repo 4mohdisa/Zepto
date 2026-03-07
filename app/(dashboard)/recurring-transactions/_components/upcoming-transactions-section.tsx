@@ -3,10 +3,10 @@
 import { format } from 'date-fns'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatCurrency } from '@/utils/format'
+import { formatCurrency } from '@/lib/utils/format'
 import { Badge } from '@/components/ui/badge'
 import { CreditCard } from 'lucide-react'
-import { Transaction } from '@/app/types/transaction'
+import { Transaction } from '@/types/transaction'
 import { cn } from '@/lib/utils'
 
 interface UpcomingTransactionsSectionProps {

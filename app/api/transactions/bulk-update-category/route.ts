@@ -17,14 +17,14 @@ export async function POST(request: NextRequest) {
 
     if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
       return NextResponse.json(
-        { error: 'Invalid transaction IDs' },
+        { error: 'Invalid transaction IDs', code: 'VALIDATION_ERROR' },
         { status: 400 }
       )
     }
 
     if (!categoryId) {
       return NextResponse.json(
-        { error: 'Category ID is required' },
+        { error: 'Category ID is required', code: 'VALIDATION_ERROR' },
         { status: 400 }
       )
     }
@@ -44,20 +44,20 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('Bulk update category error:', error)
       return NextResponse.json(
-        { error: 'Failed to update transactions' },
+        { error: 'Failed to update transactions', code: 'UPDATE_ERROR', details: error.message },
         { status: 500 }
       )
     }
 
     return NextResponse.json({
-      updatedCount: transactionIds.length,
       success: true,
+      updatedCount: transactionIds.length,
     })
 
   } catch (error) {
     console.error('Bulk update category API error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }
     )
   }

@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useSupabaseClient } from '@/utils/supabase/client'
-import { useAuth } from '@/context/auth-context'
-import { debugLogger } from '@/utils/debug-logger'
+import { useAuth } from '@/providers'
+import { debugLogger } from '@/lib/utils/debug-logger'
 
 export interface BalanceHistoryRecord {
   id: string
@@ -22,46 +21,64 @@ interface UseBalanceHistoryOptions {
 export function useBalanceHistory(options: UseBalanceHistoryOptions = {}) {
   const { accountType, limit = 50 } = options
   const { user } = useAuth()
-  const supabase = useSupabaseClient()
   
   const [history, setHistory] = useState<BalanceHistoryRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errorCode, setErrorCode] = useState<string | null>(null)
 
   const fetchHistory = useCallback(async () => {
     if (!user?.id) return
 
     setLoading(true)
     setError(null)
+    setErrorCode(null)
 
     try {
-      let query = supabase
-        .from('account_balance_history')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(limit)
-
+      const params = new URLSearchParams()
+      params.append('limit', String(limit))
       if (accountType && accountType !== 'all') {
-        query = query.eq('account_type', accountType)
+        params.append('accountType', accountType)
       }
 
-      const { data, error: supabaseError } = await query
+      const response = await fetch(`/api/balance-history?${params.toString()}`)
+      const result = await response.json()
 
-      if (supabaseError) {
-        throw supabaseError
+      if (!response.ok) {
+        // Extract structured error from API
+        const errorMessage = result.error || result.message || `Failed to fetch: ${response.statusText}`
+        const errorCodeValue = result.code || `HTTP_${response.status}`
+        
+        throw {
+          message: errorMessage,
+          code: errorCodeValue,
+          details: result.details,
+          sqlHint: result.sqlHint
+        }
       }
 
-      setHistory(data || [])
-      debugLogger.info('balance', 'Fetched balance history', { count: data?.length || 0 })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch history'
+      setHistory(result.history || [])
+      debugLogger.info('balance', 'Fetched balance history', { 
+        count: result.count || 0,
+        duration: result.duration 
+      })
+    } catch (err: any) {
+      const message = err?.message || 'Failed to fetch history'
+      const code = err?.code || 'UNKNOWN_ERROR'
+      
       setError(message)
-      debugLogger.error('balance', 'Failed to fetch history', { error: message })
+      setErrorCode(code)
+      
+      debugLogger.error('balance', 'Failed to fetch history', { 
+        error: message,
+        code: code,
+        details: err?.details,
+        sqlHint: err?.sqlHint
+      })
     } finally {
       setLoading(false)
     }
-  }, [user?.id, accountType, limit, supabase])
+  }, [user?.id, accountType, limit])
 
   // Add a new history record
   const addHistoryRecord = useCallback(async (
@@ -72,26 +89,42 @@ export function useBalanceHistory(options: UseBalanceHistoryOptions = {}) {
     if (!user?.id) return
 
     try {
-      const { error } = await supabase
-        .from('account_balance_history')
-        .insert({
-          user_id: user.id,
+      const response = await fetch('/api/balance-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           account_type: accountType,
           balance_amount: balanceAmount,
-          note: note || null,
+          note: note || null
         })
+      })
 
-      if (error) throw error
+      const result = await response.json()
 
-      debugLogger.info('balance', 'Added history record', { accountType, balanceAmount })
+      if (!response.ok) {
+        throw new Error(result.error || result.message || 'Failed to add history')
+      }
+
+      debugLogger.info('balance', 'Added history record', { 
+        accountType, 
+        balanceAmount,
+        recordId: result.record?.id 
+      })
       
       // Refresh history after adding
       await fetchHistory()
+      
+      return result.record
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to add history'
-      debugLogger.error('balance', 'Failed to add history', { error: message })
+      debugLogger.error('balance', 'Failed to add history', { 
+        accountType,
+        balanceAmount,
+        error: message 
+      })
+      throw err
     }
-  }, [user?.id, supabase, fetchHistory])
+  }, [user?.id, fetchHistory])
 
   useEffect(() => {
     fetchHistory()
@@ -101,6 +134,7 @@ export function useBalanceHistory(options: UseBalanceHistoryOptions = {}) {
     history,
     loading,
     error,
+    errorCode,
     refetch: fetchHistory,
     addHistoryRecord,
   }
