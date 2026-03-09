@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createClient } from '@supabase/supabase-js'
 import { TransactionService } from '@/features/transactions/services'
+import { trackServerEvent, EVENT_RECURRING_GENERATED } from '@/lib/analytics/server'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -26,6 +27,12 @@ export async function POST(request: NextRequest) {
 
     // Generate due transactions
     const createdTransactions = await service.generateDueTransactions(userId)
+
+    // Track analytics (fire and forget - don't block response)
+    trackServerEvent(EVENT_RECURRING_GENERATED, userId, {
+      count: createdTransactions.length,
+      success: true
+    }).catch(() => { /* ignore analytics errors */ })
 
     return NextResponse.json({
       success: true,

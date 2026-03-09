@@ -1,7 +1,8 @@
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
-import { AuthProvider } from '@/providers';
-import { CacheProvider } from '@/providers';
+import { AuthProvider } from '@/providers/auth-provider';
+import { CacheProvider } from '@/providers/cache-provider';
+import { PostHogProvider } from '@/providers/posthog-provider';
 import { ErrorBoundaryWrapper } from '@/components/ui/error-boundary';
 import { DebugProvider, AnalyticsProvider } from '@/components/debug';
 import { DebugPanelWrapper } from '@/components/debug/debug-panel-wrapper';
@@ -28,18 +29,20 @@ export default function RootLayout({
       >
         <ClerkProvider>
           <AuthProvider>
-            <DebugProvider>
-              <AnalyticsProvider>
-                <ErrorBoundaryWrapper>
-                  <CacheProvider>
-                    <ErrorBoundaryWrapper>
-                      {children}
-                    </ErrorBoundaryWrapper>
-                  </CacheProvider>
-                </ErrorBoundaryWrapper>
-                <DebugPanelWrapper />
-              </AnalyticsProvider>
-            </DebugProvider>
+            <PostHogProvider>
+              <DebugProvider>
+                <AnalyticsProvider>
+                  <ErrorBoundaryWrapper>
+                    <CacheProvider>
+                      <ErrorBoundaryWrapper>
+                        {children}
+                      </ErrorBoundaryWrapper>
+                    </CacheProvider>
+                  </ErrorBoundaryWrapper>
+                  <DebugPanelWrapper />
+                </AnalyticsProvider>
+              </DebugProvider>
+            </PostHogProvider>
           </AuthProvider>
         </ClerkProvider>
       </body>

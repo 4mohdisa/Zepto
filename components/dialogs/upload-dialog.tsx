@@ -20,6 +20,13 @@ import {
 import { useAuth } from '@/providers'
 import { toast } from 'sonner'
 import { invalidateMerchantsCache } from '@/hooks/use-merchants'
+import { 
+  trackEvent, 
+  trackResult,
+  EVENT_CSV_IMPORT_STARTED, 
+  EVENT_CSV_IMPORT_COMPLETED, 
+  EVENT_CSV_IMPORT_FAILED 
+} from '@/lib/analytics'
 
 interface UploadDialogProps {
   open: boolean
@@ -126,6 +133,15 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
   const handleImport = async () => {
     if (!user?.id || categorizedTransactions.length === 0) return
 
+    const startTime = Date.now()
+    const transactionCount = categorizedTransactions.length
+    
+    // Track import started
+    trackEvent(EVENT_CSV_IMPORT_STARTED, {
+      transaction_count: transactionCount,
+      use_ai: useAI,
+    })
+
     setStep('processing')
     setIsProcessing(true)
     setCurrentIndex(0)
@@ -180,6 +196,17 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
       }
       
       setStep('complete')
+      const durationMs = Date.now() - startTime
+      
+      // Track import completed
+      trackResult(EVENT_CSV_IMPORT_COMPLETED, failedCount === 0, {
+        transaction_count: transactionCount,
+        imported_count: successCount,
+        duplicate_count: duplicateCount,
+        failed_count: failedCount,
+        duration_ms: durationMs,
+        use_ai: useAI,
+      })
       
       // Show appropriate toast messages
       if (successCount > 0 && duplicateCount > 0) {
@@ -203,6 +230,13 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
       console.error('Import error:', err)
       setError('Import failed. Please try again.')
       setStep('error')
+      
+      // Track import failed
+      trackEvent(EVENT_CSV_IMPORT_FAILED, {
+        transaction_count: transactionCount,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        duration_ms: Date.now() - startTime,
+      })
     } finally {
       setIsProcessing(false)
     }

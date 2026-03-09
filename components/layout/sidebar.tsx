@@ -19,6 +19,8 @@ import {
   ArrowLeftRight, 
   RefreshCw,
   Store,
+  Tag,
+  MessageSquare,
 } from 'lucide-react'
 
 const navItems = [
@@ -41,6 +43,16 @@ const navItems = [
     title: "Merchants", 
     url: "/merchants", 
     icon: Store,
+  },
+  { 
+    title: "Categories", 
+    url: "/categories", 
+    icon: Tag,
+  },
+  { 
+    title: "Feedback", 
+    url: "/feedback", 
+    icon: MessageSquare,
   },
 ]
 

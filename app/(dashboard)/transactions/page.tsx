@@ -5,13 +5,15 @@ import { TransactionFilters } from './_components/transaction-filters'
 import { BulkActionsBar } from './_components/bulk-actions-bar'
 import { TransactionsTable } from './_components/transactions-table'
 import { Button } from '@/components/ui/button'
-import { Plus, Upload } from 'lucide-react'
+import { UploadIcon } from 'lucide-react'
 import { useState, useCallback } from 'react'
 import { TransactionDialog } from '@/features/transactions/components/transaction-dialog'
 import { UploadDialog } from '@/components/dialogs/upload-dialog'
 import { ConfirmationDialog } from '@/components/dialogs/confirmation-dialog'
 import { toast } from 'sonner'
 import { invalidateCache } from '@/hooks/use-data-cache'
+import { usePageView } from '@/hooks/use-page-view'
+import { trackEvent, EVENT_TRANSACTION_DELETED } from '@/lib/analytics'
 import { 
   pageContainer, 
   pageContent, 
@@ -70,6 +72,9 @@ export default function TransactionsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null)
 
+  // Track page view
+  usePageView('transactions')
+
   const handleBulkDelete = async () => {
     try {
       await bulkDelete(Array.from(selectedIds))
@@ -109,6 +114,12 @@ export default function TransactionsPage() {
     
     try {
       await deleteTransaction(deletingTransaction.id)
+      
+      // Track transaction deleted
+      trackEvent(EVENT_TRANSACTION_DELETED, {
+        transaction_id: deletingTransaction.id,
+      })
+      
       invalidateCache('transactions')
       invalidateCache('dashboard')
       toast.success('Transaction deleted successfully')
@@ -140,22 +151,17 @@ export default function TransactionsPage() {
           
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
               onClick={() => setIsUploadOpen(true)}
-              size="sm"
               className={secondaryButton}
             >
-              <Upload className={primaryButtonIcon} />
               <span className="hidden sm:inline">Import</span>
               <span className="sm:hidden">Import</span>
             </Button>
             
             <Button 
               onClick={() => setIsAddTransactionOpen(true)}
-              size="sm"
               className={primaryButton}
             >
-              <Plus className={primaryButtonIcon} />
               <span className="hidden sm:inline">Add Transaction</span>
               <span className="sm:hidden">Add</span>
             </Button>

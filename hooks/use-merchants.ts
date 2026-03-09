@@ -9,6 +9,10 @@ export interface Merchant {
   user_id: string
   merchant_name: string
   normalized_name: string
+  display_name?: string
+  canonical_name?: string
+  classification?: 'merchant' | 'payment_processor' | 'marketplace' | 'bank_transfer' | 'unknown' | 'noise'
+  confidence?: number
   transaction_count: number
   last_used_at: string
   created_at: string
@@ -323,7 +327,9 @@ export function useMerchants(): UseMerchantsReturn {
     const query = searchQuery.toLowerCase()
     return merchants.filter(m => 
       m.merchant_name.toLowerCase().includes(query) ||
-      m.normalized_name.includes(query)
+      m.normalized_name.includes(query) ||
+      (m.display_name && m.display_name.toLowerCase().includes(query)) ||
+      (m.canonical_name && m.canonical_name.toLowerCase().includes(query))
     )
   }, [merchants, searchQuery])
 

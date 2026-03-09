@@ -6,13 +6,16 @@ import { PeriodFilter } from './_components/period-filter'
 import { CurrentBalanceHero } from './_components/current-balance-hero'
 import { KpiRow } from './_components/kpi-row'
 import { Button } from '@/components/ui/button'
-import { Plus, Upload } from 'lucide-react'
+import { UploadIcon } from 'lucide-react'
 import { useState, Suspense, lazy, useCallback, useMemo } from 'react'
 import { TransactionDialog } from '@/features/transactions/components/transaction-dialog'
 import { UploadDialog } from '@/components/dialogs/upload-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SectionErrorBoundary } from '@/components/error-boundary'
 import { toast } from 'sonner'
+import { usePageView } from '@/hooks/use-page-view'
+import { EVENT_DASHBOARD_VIEWED, EVENT_BALANCE_UPDATED } from '@/lib/analytics'
+import { trackEvent } from '@/lib/analytics'
 import { 
   pageContainer, 
   pageContent, 
@@ -68,6 +71,9 @@ export default function DashboardPage() {
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false)
   const [isUploadOpen, setIsUploadOpen] = useState(false)
 
+  // Track page view
+  usePageView('dashboard', { period: `${year}-${month}` })
+
   // Handle success with cache invalidation
   const handleSuccess = useCallback(() => {
     // Invalidate related caches
@@ -102,23 +108,18 @@ export default function DashboardPage() {
             </div>
             
             <Button
-              variant="outline"
-              size="sm"
               onClick={() => setIsUploadOpen(true)}
               className={secondaryButton}
             >
-              <Upload className={primaryButtonIcon} />
               <span className="hidden sm:inline">Import</span>
               <span className="sm:hidden">Import</span>
             </Button>
             
             <Button
-              size="sm"
               onClick={() => setIsAddTransactionOpen(true)}
               className={primaryButton}
             >
-              <Plus className={primaryButtonIcon} />
-              <span className="hidden sm:inline">Add</span>
+              <span className="hidden sm:inline">Add Transaction</span>
               <span className="sm:hidden">Add</span>
             </Button>
           </div>

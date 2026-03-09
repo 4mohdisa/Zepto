@@ -19,10 +19,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreHorizontal, Plus, Calendar } from 'lucide-react'
+import { MoreHorizontal, Calendar } from 'lucide-react'
 import { RecurringTransaction } from '@/types/transaction'
 import { formatCurrency } from '@/lib/utils/format'
 import { cn } from '@/lib/utils'
+import { primaryButton } from '@/lib/styles'
 
 interface RecurringTableProps {
   data: RecurringTransaction[]
@@ -104,9 +105,8 @@ export function RecurringTable({
         <Button 
           onClick={onAdd} 
           size="sm"
-          className="bg-[#635BFF] hover:bg-[#5851EA] text-white"
+          className={primaryButton}
         >
-          <Plus className="mr-2 h-4 w-4" /> 
           Add recurring
         </Button>
       </div>

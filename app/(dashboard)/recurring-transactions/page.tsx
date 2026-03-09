@@ -6,6 +6,7 @@ import { RecurringTransaction } from '@/types/transaction'
 // Hooks
 import { useRecurringTransactions } from '@/hooks/use-recurring-transactions'
 import { invalidateCache } from '@/hooks/use-data-cache'
+import { usePageView } from '@/hooks/use-page-view'
 
 // Components
 import { RecurringTransactionDialog } from '@/features/transactions/components/recurring-dialog'
@@ -13,6 +14,7 @@ import { RecurringTable } from './_components/recurring-table'
 import { UpcomingTransactionsSection } from './_components/upcoming-transactions-section'
 import { ConfirmationDialog } from '@/components/dialogs/confirmation-dialog'
 import { toast } from 'sonner'
+import { trackEvent, EVENT_RECURRING_DELETED } from '@/lib/analytics'
 
 export default function RecurringTransactionsPage() {
   const {
@@ -33,6 +35,9 @@ export default function RecurringTransactionsPage() {
   // Delete confirmation state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<number | string | null>(null)
+
+  // Track page view
+  usePageView('recurring')
 
   // Dialog handlers
   const openAddDialog = useCallback(() => setIsAddDialogOpen(true), [])
@@ -60,6 +65,12 @@ export default function RecurringTransactionsPage() {
     if (!deletingId) return
     try {
       await deleteRecurringTransaction(deletingId)
+      
+      // Track recurring deleted
+      trackEvent(EVENT_RECURRING_DELETED, {
+        recurring_id: deletingId,
+      })
+      
       invalidateCache('recurring')
       invalidateCache('dashboard')
       toast.success('Recurring transaction deleted')

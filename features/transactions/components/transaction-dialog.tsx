@@ -33,6 +33,8 @@ import { useSupabaseClient } from '@/lib/supabase/client'
 import { debugLogger } from '@/lib/utils/debug-logger'
 import { format } from 'date-fns'
 import { Loader2 } from 'lucide-react'
+import { primaryButton, secondaryButton } from '@/lib/styles'
+import { trackEvent, EVENT_TRANSACTION_CREATED, EVENT_TRANSACTION_UPDATED } from '@/lib/analytics'
 
 // Simplified schema without recurring
 const transactionSchema = z.object({
@@ -151,6 +153,13 @@ export function TransactionDialog({
 
         if (error) throw error
         
+        // Track transaction updated
+        trackEvent(EVENT_TRANSACTION_UPDATED, {
+          transaction_id: initialData.id,
+          type: values.type,
+          has_category: !!values.category_id,
+        })
+        
         toast.success('Transaction updated')
       } else {
         // Create new transaction
@@ -161,6 +170,13 @@ export function TransactionDialog({
           .insert(payload)
 
         if (error) throw error
+        
+        // Track transaction created
+        trackEvent(EVENT_TRANSACTION_CREATED, {
+          type: values.type,
+          has_category: !!values.category_id,
+          source: 'manual',
+        })
         
         toast.success('Transaction created')
       }
@@ -314,14 +330,14 @@ export function TransactionDialog({
               type="button" 
               variant="outline" 
               onClick={onClose}
-              className="h-9 text-sm"
+              className={secondaryButton}
               disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button 
               type="submit"
-              className="h-9 text-sm bg-[#635BFF] hover:bg-[#5851EA]"
+              className={primaryButton}
               disabled={isSubmitting || categoriesLoading}
             >
               {isSubmitting ? (

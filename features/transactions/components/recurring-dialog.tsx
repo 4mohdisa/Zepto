@@ -22,6 +22,7 @@ import { useCategories } from "@/hooks/use-categories"
 import { useAuth } from '@/providers'
 import { BaseDialogProps, RecurringTransactionFormValues, recurringTransactionSchema } from '@/components/shared/transaction-schema'
 import { RecurringTransaction } from '@/types/transaction'
+import { primaryButton, secondaryButton } from '@/lib/styles'
 
 import { InputField, TextareaField, SelectField, DatePickerField } from '@/components/shared/form-fields'
 import { LoadingButton } from '@/components/shared/loading-button'
@@ -203,8 +204,7 @@ export function RecurringTransactionDialog({
                 type="button" 
                 variant="outline" 
                 onClick={onClose}
-                size="sm"
-                className="border-gray-300"
+                className={secondaryButton}
               >
                 Cancel
               </Button>
@@ -212,8 +212,7 @@ export function RecurringTransactionDialog({
                 type="submit"
                 isLoading={isSubmitting}
                 loadingText={mode === 'create' ? 'Creating...' : 'Saving...'}
-                size="sm"
-                className="bg-[#635BFF] hover:bg-[#5851EA] text-white"
+                className={primaryButton}
               >
                 {mode === 'create' ? 'Create' : 'Save'}
               </LoadingButton>

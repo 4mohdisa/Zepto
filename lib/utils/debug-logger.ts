@@ -7,6 +7,13 @@
 // Global flag to prevent double-patching across HMR
 let fetchPatched = false
 
+// Known intentional test endpoints/patterns that should be logged differently
+export const INTENTIONAL_TEST_PATTERNS = [
+  'TestClientError',
+  'TestApiError',
+  'Test React rendering error',
+]
+
 export type DebugEventType = 
   | 'NAVIGATION'
   | 'API_REQUEST'
@@ -23,6 +30,7 @@ export type DebugEventType =
   | 'CACHE_INVALIDATE'
   | 'MUTATION'
   | 'INFO'
+  | 'TEST_EVENT'
 
 export interface DebugEvent {
   id: string
@@ -124,8 +132,16 @@ class DebugLogger {
 
   private setupErrorHandlers() {
     window.addEventListener('error', (event) => {
+      const errorName = event.error?.name || ''
+      const errorMessage = event.message || ''
+      
+      // Check if this is an intentional test error
+      const isIntentionalTest = INTENTIONAL_TEST_PATTERNS.some(pattern => 
+        errorName.includes(pattern) || errorMessage.includes(pattern)
+      )
+      
       this.log({
-        type: 'UI_ERROR',
+        type: isIntentionalTest ? 'TEST_EVENT' : 'UI_ERROR',
         scope: 'window',
         name: event.error?.name || 'Error',
         status: 'error',
@@ -133,7 +149,8 @@ class DebugLogger {
         errorDetails: {
           filename: event.filename,
           lineno: event.lineno,
-          colno: event.colno
+          colno: event.colno,
+          isIntentionalTest
         },
         stack: event.error?.stack
       })
@@ -141,13 +158,21 @@ class DebugLogger {
 
     window.addEventListener('unhandledrejection', (event) => {
       const error = event.reason
+      const errorName = error?.name || ''
+      const errorMessage = typeof error === 'string' ? error : error?.message || ''
+      
+      // Check if this is an intentional test error
+      const isIntentionalTest = INTENTIONAL_TEST_PATTERNS.some(pattern => 
+        errorName.includes(pattern) || errorMessage.includes(pattern)
+      )
+      
       this.log({
-        type: 'UNHANDLED_REJECTION',
+        type: isIntentionalTest ? 'TEST_EVENT' : 'UNHANDLED_REJECTION',
         scope: 'promise',
         name: error?.name || 'UnhandledRejection',
         status: 'error',
-        errorMessage: typeof error === 'string' ? error : error?.message,
-        errorDetails: error,
+        errorMessage: errorMessage,
+        errorDetails: { ...error, isIntentionalTest },
         stack: error?.stack
       })
     })
@@ -237,8 +262,11 @@ class DebugLogger {
         
         // Log response (safely)
         try {
+          // Check if this is an intentional test endpoint
+          const isTestEndpoint = INTENTIONAL_TEST_PATTERNS.some(pattern => url.includes(pattern))
+          
           logger.log({
-            type: isSupabase ? 'SUPABASE_QUERY' : 'API_RESPONSE',
+            type: isTestEndpoint ? 'TEST_EVENT' : (isSupabase ? 'SUPABASE_QUERY' : 'API_RESPONSE'),
             scope: isSupabase ? 'supabase' : 'api',
             name: url.split('?')[0].split('/').pop() || 'request',
             route: url,
@@ -276,8 +304,11 @@ class DebugLogger {
         
         // Log error (safely)
         try {
+          // Check if this is an intentional test endpoint
+          const isTestEndpoint = INTENTIONAL_TEST_PATTERNS.some(pattern => url.includes(pattern))
+          
           logger.log({
-            type: isSupabase ? 'SUPABASE_ERROR' : 'API_ERROR',
+            type: isTestEndpoint ? 'TEST_EVENT' : (isSupabase ? 'SUPABASE_ERROR' : 'API_ERROR'),
             scope: isSupabase ? 'supabase' : 'api',
             name: url.split('?')[0].split('/').pop() || 'request',
             route: url,
@@ -314,6 +345,21 @@ class DebugLogger {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   }
 
+  /**
+   * Check if an event is an intentional test/sentry verification event
+   */
+  private isIntentionalTestEvent(event: DebugEvent): boolean {
+    const url = event.route || ''
+    const message = event.errorMessage || ''
+    const name = event.name || ''
+    
+    return INTENTIONAL_TEST_PATTERNS.some(pattern => 
+      url.includes(pattern) || 
+      message.includes(pattern) || 
+      name.includes(pattern)
+    )
+  }
+
   log(partialEvent: Omit<DebugEvent, 'id' | 'ts'>): DebugEvent {
     const event: DebugEvent = {
       id: this.generateId(),
@@ -332,12 +378,34 @@ class DebugLogger {
     if (process.env.NODE_ENV === 'development') {
       const prefix = `[${event.type}]${event.scope ? ` [${event.scope}]` : ''}`
       
+      // Check if this is an intentional test event
+      const isIntentionalTest = this.isIntentionalTestEvent(event)
+      
       // Skip logging fast cache hits to reduce noise (keep errors and slow requests)
       const isCacheHit = event.type === 'CACHE_HIT'
       const isFastRequest = event.durationMs && event.durationMs < 100
       
-      if (event.status === 'error') {
-        // Better error logging with details
+      if (isIntentionalTest) {
+        // Log intentional test events as softer "test" events, not scary errors
+        if (event.status === 'error') {
+          console.log(
+            `%c🧪 [TEST EVENT]%c`, 
+            'color: #8b5cf6; font-weight: bold', 
+            'color: inherit',
+            event.route || event.name,
+            '→ Expected test error (sent to Sentry for verification)'
+          )
+        } else {
+          console.log(
+            `%c🧪 [TEST EVENT]%c`, 
+            'color: #8b5cf6; font-weight: bold', 
+            'color: inherit',
+            event.route || event.name,
+            event.durationMs ? `(${event.durationMs}ms)` : ''
+          )
+        }
+      } else if (event.status === 'error') {
+        // Real errors - log normally as errors
         const errorInfo = event.errorCode ? `[${event.errorCode}] ` : ''
         const details = event.errorDetails ? 
           (typeof event.errorDetails === 'object' ? 
@@ -402,12 +470,20 @@ class DebugLogger {
     return this.events.filter(e => e.type === type)
   }
 
-  getErrors(): DebugEvent[] {
-    return this.events.filter(e => e.status === 'error' || e.type.includes('ERROR'))
+  getErrors(includeTestEvents: boolean = false): DebugEvent[] {
+    return this.events.filter(e => {
+      const isError = e.status === 'error' || e.type.includes('ERROR')
+      const isTestEvent = e.type === 'TEST_EVENT' || this.isIntentionalTestEvent(e)
+      
+      if (includeTestEvents) {
+        return isError || isTestEvent
+      }
+      return isError && !isTestEvent
+    })
   }
 
-  getRecentErrors(count: number = 10): DebugEvent[] {
-    return this.getErrors().slice(-count)
+  getRecentErrors(count: number = 10, includeTestEvents: boolean = false): DebugEvent[] {
+    return this.getErrors(includeTestEvents).slice(-count)
   }
 
   clear() {
@@ -650,18 +726,20 @@ class DebugLogger {
       errors: recentEvents.filter(e => e.status === 'error').length
     }
     
-    // Log formatted summary
-    console.group('⚡ Zepto Performance Summary')
-    console.log('Page Load:', summary.pageLoad)
-    console.log('TTFB:', summary.ttfb)
-    console.log('API Avg:', summary.apiRequests.avgDuration, 
-      `(${summary.apiRequests.count} requests)`,
-      summary.apiRequests.slowest ? `- Slowest: ${summary.apiRequests.slowest.name} (${summary.apiRequests.slowest.duration})` : ''
-    )
-    console.log('Cache Hit Rate:', summary.cacheHitRate)
-    console.log('Supabase Avg:', summary.supabase.avgDuration, `(${summary.supabase.queryCount} queries)`)
-    console.log('Errors:', summary.errors)
-    console.groupEnd()
+    // Log formatted summary (dev only)
+    if (process.env.NODE_ENV === 'development') {
+      console.group('⚡ Zepto Performance Summary')
+      console.log('Page Load:', summary.pageLoad)
+      console.log('TTFB:', summary.ttfb)
+      console.log('API Avg:', summary.apiRequests.avgDuration, 
+        `(${summary.apiRequests.count} requests)`,
+        summary.apiRequests.slowest ? `- Slowest: ${summary.apiRequests.slowest.name} (${summary.apiRequests.slowest.duration})` : ''
+      )
+      console.log('Cache Hit Rate:', summary.cacheHitRate)
+      console.log('Supabase Avg:', summary.supabase.avgDuration, `(${summary.supabase.queryCount} queries)`)
+      console.log('Errors:', summary.errors)
+      console.groupEnd()
+    }
     
     return summary
   }

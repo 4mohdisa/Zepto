@@ -26,7 +26,7 @@ interface UseTransactionsState {
   dateTo: string
   search: string
   categoryId: string
-  typeOrder: 'default' | 'expense_first' | 'income_first'
+  typeOrder: 'default' | 'expense_first' | 'income_first' | 'amount_high' | 'amount_low'
 }
 
 interface UseTransactionsReturn {
@@ -42,7 +42,7 @@ interface UseTransactionsReturn {
   setDateTo: (date: string) => void
   setSearch: (search: string) => void
   setCategoryId: (id: string) => void
-  setTypeOrder: (order: 'default' | 'expense_first' | 'income_first') => void
+  setTypeOrder: (order: 'default' | 'expense_first' | 'income_first' | 'amount_high' | 'amount_low') => void
   selectedIds: Set<number>
   setSelectedIds: (ids: Set<number>) => void
   toggleSelection: (id: number) => void
@@ -386,7 +386,7 @@ export function useTransactions(): UseTransactionsReturn {
     setState((prev) => ({ ...prev, categoryId: id }))
   }, [])
 
-  const setTypeOrder = useCallback((order: 'default' | 'expense_first' | 'income_first') => {
+  const setTypeOrder = useCallback((order: 'default' | 'expense_first' | 'income_first' | 'amount_high' | 'amount_low') => {
     setState((prev) => ({ ...prev, typeOrder: order }))
   }, [])
 

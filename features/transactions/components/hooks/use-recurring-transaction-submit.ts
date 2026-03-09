@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { toast } from 'sonner'
 import { RecurringTransactionFormValues } from '@/components/shared/transaction-schema'
 import { RecurringTransaction } from '@/types/transaction'
+import { trackEvent, EVENT_RECURRING_CREATED, EVENT_RECURRING_UPDATED } from '@/lib/analytics'
 
 interface UseRecurringTransactionSubmitProps {
   userId: string | undefined
@@ -54,12 +55,27 @@ export function useRecurringTransactionSubmit({
         if (!createRecurringTransaction) {
           throw new Error('Create recurring transaction function not provided')
         }
-        await createRecurringTransaction(submissionData)
+        const result = await createRecurringTransaction(submissionData)
+        
+        // Track recurring created
+        trackEvent(EVENT_RECURRING_CREATED, {
+          type: data.type,
+          frequency: data.frequency,
+          has_category: !!data.category_id,
+          has_end_date: !!data.end_date,
+        })
       } else if (mode === 'edit' && initialDataId) {
         if (!updateRecurringTransaction) {
           throw new Error('Update recurring transaction function not provided')
         }
         await updateRecurringTransaction(initialDataId, submissionData)
+        
+        // Track recurring updated
+        trackEvent(EVENT_RECURRING_UPDATED, {
+          recurring_id: initialDataId,
+          type: data.type,
+          frequency: data.frequency,
+        })
       } else if (onSubmitCallback) {
         await onSubmitCallback(data)
       }

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Wallet, Loader2, History, Plus, Clock } from 'lucide-react';
+import { Wallet, Loader2, History, Clock } from 'lucide-react';
+import { primaryButton, secondaryButton } from '@/lib/styles'
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ import { debugLogger } from '@/lib/utils/debug-logger';
 import { useBalanceHistory } from '@/hooks/use-balance-history';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/lib/utils/format';
+import { trackEvent, EVENT_BALANCE_UPDATED, EVENT_BALANCE_HISTORY_VIEWED } from '@/lib/analytics';
 
 interface BalanceDialogProps {
   open: boolean;
@@ -56,8 +58,12 @@ export function BalanceDialog({ open, onOpenChange, onSuccess }: BalanceDialogPr
   useEffect(() => {
     if (open && activeTab === 'history') {
       refetchHistory();
+      // Track balance history viewed
+      trackEvent(EVENT_BALANCE_HISTORY_VIEWED, {
+        account_filter: historyAccountFilter,
+      });
     }
-  }, [open, activeTab, refetchHistory]);
+  }, [open, activeTab, refetchHistory, historyAccountFilter]);
 
   const handleClose = useCallback(() => {
     setAccountType('Checking');
@@ -110,6 +116,12 @@ export function BalanceDialog({ open, onOpenChange, onSuccess }: BalanceDialogPr
         balance: balanceValue,
       });
 
+      // Track balance update (without the actual balance amount)
+      trackEvent(EVENT_BALANCE_UPDATED, {
+        account_type: accountType,
+        has_note: !!note,
+      });
+
       toast.success(`Balance updated for ${accountType}`);
       onSuccess?.();
       handleClose();
@@ -158,12 +170,10 @@ export function BalanceDialog({ open, onOpenChange, onSuccess }: BalanceDialogPr
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="set" className="flex items-center gap-1.5">
-              <Plus className="h-3.5 w-3.5" />
+            <TabsTrigger value="set">
               Set Balance
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-1.5">
-              <History className="h-3.5 w-3.5" />
+            <TabsTrigger value="history">
               History
             </TabsTrigger>
           </TabsList>
@@ -216,14 +226,14 @@ export function BalanceDialog({ open, onOpenChange, onSuccess }: BalanceDialogPr
               </div>
             </div>
 
-            <DialogFooter className="pt-4">
-              <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+            <DialogFooter className="pt-4 gap-2">
+              <Button variant="outline" onClick={handleClose} disabled={isSubmitting} className={secondaryButton}>
                 Cancel
               </Button>
               <Button 
                 onClick={handleSubmit} 
                 disabled={isSubmitting || !balance}
-                className="bg-[#635BFF] hover:bg-[#5851EA]"
+                className={primaryButton}
               >
                 {isSubmitting ? (
                   <>

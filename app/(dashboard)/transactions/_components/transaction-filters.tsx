@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ArrowUpDown, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { categories } from '@/constants/categories'
 import { cn } from '@/lib/utils'
 
@@ -18,12 +18,12 @@ interface TransactionFiltersProps {
   dateTo: string
   search: string
   categoryId: string
-  typeOrder: 'default' | 'expense_first' | 'income_first'
+  typeOrder: 'default' | 'expense_first' | 'income_first' | 'amount_high' | 'amount_low'
   onDateFromChange: (date: string) => void
   onDateToChange: (date: string) => void
   onSearchChange: (search: string) => void
   onCategoryIdChange: (id: string) => void
-  onTypeOrderChange: (order: 'default' | 'expense_first' | 'income_first') => void
+  onTypeOrderChange: (order: 'default' | 'expense_first' | 'income_first' | 'amount_high' | 'amount_low') => void
 }
 
 export function TransactionFilters({
@@ -76,19 +76,23 @@ export function TransactionFilters({
       {/* Bottom row: Date range and Type sort */}
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-start sm:items-center">
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => onDateFromChange(e.target.value)}
-            className="w-full sm:w-[130px] h-9 sm:h-10 text-sm"
-          />
+          <div className="relative flex-1 sm:flex-none">
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => onDateFromChange(e.target.value)}
+              className="w-full sm:w-[140px] h-9 sm:h-10 text-sm pr-8"
+            />
+          </div>
           <span className="text-muted-foreground text-sm">to</span>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => onDateToChange(e.target.value)}
-            className="w-full sm:w-[130px] h-9 sm:h-10 text-sm"
-          />
+          <div className="relative flex-1 sm:flex-none">
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={(e) => onDateToChange(e.target.value)}
+              className="w-full sm:w-[140px] h-9 sm:h-10 text-sm pr-8"
+            />
+          </div>
         </div>
 
         {isDateRangeInvalid && (
@@ -98,33 +102,22 @@ export function TransactionFilters({
         )}
 
         <div className="flex items-center gap-2 ml-auto">
-          <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">Sort by:</span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              if (typeOrder === 'default') {
-                onTypeOrderChange('expense_first')
-              } else if (typeOrder === 'expense_first') {
-                onTypeOrderChange('income_first')
-              } else {
-                onTypeOrderChange('default')
-              }
-            }}
-            className="gap-1 h-9 sm:h-10 text-xs sm:text-sm"
+          <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">Sort:</span>
+          <Select
+            value={typeOrder}
+            onValueChange={(v) => onTypeOrderChange(v as typeof typeOrder)}
           >
-            <ArrowUpDown className="h-3 w-3" />
-            <span className="hidden sm:inline">
-              {typeOrder === 'default' && 'Date'}
-              {typeOrder === 'expense_first' && 'Expenses First'}
-              {typeOrder === 'income_first' && 'Income First'}
-            </span>
-            <span className="sm:hidden">
-              {typeOrder === 'default' && 'Date'}
-              {typeOrder === 'expense_first' && 'Exp First'}
-              {typeOrder === 'income_first' && 'Inc First'}
-            </span>
-          </Button>
+            <SelectTrigger className="w-[140px] sm:w-[160px] h-9 sm:h-10 text-xs sm:text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default">Date (newest)</SelectItem>
+              <SelectItem value="expense_first">Expenses First</SelectItem>
+              <SelectItem value="income_first">Income First</SelectItem>
+              <SelectItem value="amount_high">Amount (high)</SelectItem>
+              <SelectItem value="amount_low">Amount (low)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>

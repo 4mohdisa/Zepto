@@ -22,11 +22,11 @@ export const gridCols2 = "grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"
 export const gridCols4 = "grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
 
 // Buttons - Primary (Black)
-export const primaryButton = "bg-black text-white hover:bg-gray-800 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
+export const primaryButton = "bg-black text-white hover:bg-gray-800 border-transparent h-8 sm:h-9 text-xs sm:text-sm px-3 sm:px-4"
 export const primaryButtonIcon = "h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2"
 
 // Buttons - Secondary/Outline
-export const secondaryButton = "border-gray-300 text-gray-700 hover:bg-gray-50 h-9 sm:h-10 text-xs sm:text-sm px-3 sm:px-4"
+export const secondaryButton = "border border-gray-300 text-gray-700 hover:bg-gray-50 bg-white h-8 sm:h-9 text-xs sm:text-sm px-3 sm:px-4"
 export const ghostButton = "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
 
 // Form elements

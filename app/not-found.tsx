@@ -1,50 +1,32 @@
 'use client';
 
-import React from 'react';
 import Link from 'next/link';
 import { FileQuestion } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { LandingNavbar } from '@/components/landing/navbar';
-import { LandingFooter } from '@/components/landing/footer';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <LandingNavbar />
-      
-      <main className="flex-1 flex items-center justify-center px-4 py-32">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 mb-6">
-              <FileQuestion className="h-10 w-10 text-[#635BFF]" />
-            </div>
-            <h1 className="text-6xl md:text-7xl font-bold text-gray-900 mb-4">
-              404
-            </h1>
-            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-4">
-              Page Not Found
-            </h2>
-            <p className="text-lg text-gray-600 mb-8 max-w-lg mx-auto">
-              The page you&apos;re looking for doesn&apos;t exist or has been moved. Let&apos;s get you back on track.
-            </p>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/">
-              <Button size="lg" className="bg-[#635BFF] hover:bg-[#5851EA] text-white text-base px-8 py-6 rounded-full shadow-lg">
-                Go to Home
-              </Button>
-            </Link>
-            <Link href="/help">
-              <Button size="lg" variant="outline" className="text-base px-8 py-6 rounded-full border-gray-300 hover:bg-gray-50">
-                Get Help
-              </Button>
-            </Link>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="max-w-md mx-auto text-center">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 mb-6">
+          <FileQuestion className="h-8 w-8 text-gray-600" />
         </div>
-      </main>
-      
-      <LandingFooter />
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          404
+        </h1>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          Page Not Found
+        </h2>
+        <p className="text-gray-600 mb-8">
+          The page you&apos;re looking for doesn&apos;t exist or has been moved.
+        </p>
+        
+        <Link href="/dashboard">
+          <Button className="bg-black hover:bg-gray-800 text-white">
+            Go to Dashboard
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }

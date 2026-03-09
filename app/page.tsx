@@ -1,15 +1,14 @@
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
-import LandingPage from './landing-page';
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 
 export default async function HomePage() {
-  const { userId } = await auth();
+  const { userId } = await auth()
   
-  // If user is authenticated, redirect to dashboard
+  // If user is authenticated, go to dashboard
   if (userId) {
-    redirect('/dashboard');
+    redirect('/dashboard')
   }
   
-  // Otherwise show landing page
-  return <LandingPage />;
+  // Otherwise go to sign in
+  redirect('/sign-in')
 }

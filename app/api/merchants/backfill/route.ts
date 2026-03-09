@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createClient } from '@supabase/supabase-js';
 import { debugLogger } from '@/lib/utils/debug-logger';
+import { trackServerEvent, EVENT_MERCHANTS_BACKFILL_RUN } from '@/lib/analytics/server';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -226,6 +227,16 @@ export async function POST(request: NextRequest) {
     }
 
     const durationMs = Date.now() - startTime;
+
+    // Track analytics (fire and forget - don't block response)
+    trackServerEvent(EVENT_MERCHANTS_BACKFILL_RUN, userId, {
+      count: candidates.length,
+      dry_run: dryRun,
+      use_ai: useAI,
+      duration_ms: durationMs,
+      merchants_created: merchantsCreated,
+      merchants_updated: merchantsUpdated
+    }).catch(() => { /* ignore analytics errors */ });
 
     return NextResponse.json({
       success: true,

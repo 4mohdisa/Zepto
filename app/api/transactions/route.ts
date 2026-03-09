@@ -55,11 +55,15 @@ export async function GET(request: NextRequest) {
       query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`)
     }
 
-    // Type order
+    // Sort order
     if (typeOrder === 'expense_first') {
       query = query.order('type', { ascending: true }) // Expense before Income
     } else if (typeOrder === 'income_first') {
       query = query.order('type', { ascending: false }) // Income before Expense
+    } else if (typeOrder === 'amount_high') {
+      query = query.order('amount', { ascending: false })
+    } else if (typeOrder === 'amount_low') {
+      query = query.order('amount', { ascending: true })
     }
 
     // Default ordering by date desc, then id desc

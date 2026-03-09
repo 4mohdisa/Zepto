@@ -1,7 +1,8 @@
 'use client'
 
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect } from 'react'
 import { useAuth as useClerkAuth, useUser } from '@clerk/nextjs'
+import { setUser } from '@/lib/sentry'
 
 type AuthContextType = {
   user: {
@@ -27,6 +28,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fullName: clerkUser.fullName ?? null,
       }
     : null
+
+  // Set Sentry user context and initialize categories when auth state changes
+  useEffect(() => {
+    if (isSignedIn && userId) {
+      setUser({ id: userId })
+      
+      // Initialize default categories for new users
+      // This is safe to call multiple times as it's idempotent
+      fetch('/api/categories/init', { method: 'POST' }).catch(() => {
+        // Silent fail - category init is best-effort
+      })
+    } else {
+      setUser(null)
+    }
+  }, [isSignedIn, userId])
 
   return (
     <AuthContext.Provider

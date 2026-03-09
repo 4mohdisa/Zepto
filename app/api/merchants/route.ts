@@ -12,6 +12,30 @@ function getServiceClient() {
   });
 }
 
+// Check if error is about missing column
+function isMissingColumnError(error: any): boolean {
+  const message = error?.message || '';
+  const code = error?.code || '';
+  return (
+    code === '42703' || // PostgreSQL undefined_column
+    message.includes('column') && message.includes('does not exist') ||
+    message.includes('display_name') ||
+    message.includes('canonical_name') ||
+    message.includes('classification') ||
+    message.includes('confidence')
+  );
+}
+
+// Check if error is about missing table
+function isTableMissingError(error: any): boolean {
+  const message = error?.message || '';
+  const code = error?.code || '';
+  return (
+    code === '42P01' || 
+    message.includes('relation') && message.includes('does not exist')
+  );
+}
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   
@@ -28,31 +52,99 @@ export async function GET(request: NextRequest) {
 
     const supabase = getServiceClient();
     
-    const { data, error } = await supabase
+    // Try with new columns first (migration 017)
+    let result = await supabase
       .from('merchants')
-      .select('*')
+      .select(`
+        id,
+        user_id,
+        merchant_name,
+        normalized_name,
+        display_name,
+        canonical_name,
+        classification,
+        confidence,
+        transaction_count,
+        last_used_at,
+        created_at,
+        updated_at
+      `)
       .eq('user_id', userId)
       .order('transaction_count', { ascending: false })
       .order('last_used_at', { ascending: false })
       .limit(100);
 
-    if (error) {
-      console.error('[API /merchants] Query error:', error);
+    // If columns are missing, fall back to basic columns
+    if (result.error && isMissingColumnError(result.error)) {
+      console.warn('[API /merchants] Migration 017 columns missing, falling back to basic columns');
+      
+      const fallbackResult = await supabase
+        .from('merchants')
+        .select(`
+          id,
+          user_id,
+          merchant_name,
+          normalized_name,
+          transaction_count,
+          last_used_at,
+          created_at,
+          updated_at
+        `)
+        .eq('user_id', userId)
+        .order('transaction_count', { ascending: false })
+        .order('last_used_at', { ascending: false })
+        .limit(100);
+      
+      if (!fallbackResult.error) {
+        // Add empty new fields for compatibility
+        const data = (fallbackResult.data || []).map(m => ({
+          ...m,
+          display_name: null,
+          canonical_name: null,
+          classification: null,
+          confidence: null
+        }));
+        
+        // Return data with warning
+        return NextResponse.json({
+          merchants: data,
+          count: data.length,
+          warning: 'Migration 017 not applied. Run db/migrations/017_add_merchant_classification.sql for enhanced merchant features.',
+          code: 'MIGRATION_017_MISSING'
+        });
+      }
+      
+      // Use fallback error for further processing
+      result = fallbackResult;
+    }
+
+    if (result.error) {
+      console.error('[API /merchants] Query error:', result.error);
       
       // Check for specific PostgreSQL error codes
-      const pgError = error as any;
+      const pgError = result.error as any;
       const errorCode = pgError?.code || '';
       const errorMessage = pgError?.message || '';
-      const errorDetails = pgError?.details || '';
       
       // Table doesn't exist
-      if (errorCode === '42P01' || errorMessage.includes('relation') || errorMessage.includes('does not exist')) {
+      if (isTableMissingError(result.error)) {
         return NextResponse.json({
           error: 'Merchants table does not exist',
           code: 'TABLE_MISSING',
-          sqlHint: 'Run the merchants migration SQL',
+          sqlHint: 'Run migration 011_add_merchants_table.sql first',
           timestamp: new Date().toISOString()
         }, { status: 404 });
+      }
+      
+      // Migration 017 columns missing
+      if (isMissingColumnError(result.error)) {
+        return NextResponse.json({
+          error: 'Migration 017 required: Merchant classification columns missing',
+          code: 'SCHEMA_MISMATCH',
+          details: errorMessage,
+          sqlHint: 'Run db/migrations/017_add_merchant_classification.sql',
+          timestamp: new Date().toISOString()
+        }, { status: 400 });
       }
       
       // UUID type mismatch (user_id is UUID but we're sending string)
@@ -87,8 +179,8 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      merchants: data || [],
-      count: data?.length || 0,
+      merchants: result.data || [],
+      count: result.data?.length || 0,
     });
 
   } catch (error: any) {

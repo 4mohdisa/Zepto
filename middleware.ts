@@ -19,6 +19,8 @@ const isPublicRoute = createRouteMatcher([
   '/help',
   '/api/public(.*)',
   '/api/webhooks(.*)', // Webhooks must be public (no auth - verified via signature)
+  '/monitoring', // Sentry tunnel route must be public for error reporting
+  '/sentry-example-page', // Sentry example page for testing (no sensitive data)
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
