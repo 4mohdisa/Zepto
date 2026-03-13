@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { transactionId, name, amount, date, type, account_type, category_id, description } = body
+    const { transactionId, name, amount, date, type, account_type, category_id, merchant_id, description } = body
 
     if (!transactionId) {
       return NextResponse.json({ error: 'Transaction ID is required', code: 'VALIDATION_ERROR' }, { status: 400 })
@@ -45,6 +45,33 @@ export async function POST(request: NextRequest) {
         .single()
       
       updateData.category_name = category?.name || 'Uncategorized'
+    }
+
+    // Handle merchant update
+    if (merchant_id !== undefined) {
+      if (merchant_id === null) {
+        // Clear merchant
+        updateData.merchant_id = null
+        updateData.merchant_name = null
+      } else {
+        // Validate merchant belongs to user
+        const { data: merchant, error: merchantError } = await supabase
+          .from('merchants')
+          .select('id, merchant_name')
+          .eq('id', merchant_id)
+          .eq('user_id', userId)
+          .single()
+        
+        if (merchantError || !merchant) {
+          return NextResponse.json({ 
+            error: 'Invalid merchant ID or merchant does not belong to user', 
+            code: 'VALIDATION_ERROR' 
+          }, { status: 400 })
+        }
+        
+        updateData.merchant_id = merchant_id
+        updateData.merchant_name = merchant.merchant_name
+      }
     }
 
     const { data, error } = await supabase

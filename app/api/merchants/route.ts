@@ -195,7 +195,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST to backfill merchants
+// POST /api/merchants - Create a new merchant
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
@@ -203,39 +203,258 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized', code: 'AUTH_MISSING' }, { status: 401 });
     }
 
-    const supabase = getServiceClient();
+    const body = await request.json();
+    const { merchant_name } = body;
 
-    // Check if backfill function exists by trying to call it
-    const { data, error } = await supabase.rpc('backfill_merchants_for_user', {
-      target_user_id: userId
-    });
-
-    if (error) {
-      console.error('[API /merchants] Backfill error:', error);
-      
-      if (error.message?.includes('function') || error.message?.includes('does not exist')) {
-        return NextResponse.json({
-          error: 'Backfill function not found. Run the migration SQL first.',
-          code: 'FUNCTION_MISSING',
-          details: error.message
-        }, { status: 404 });
-      }
-      
-      return NextResponse.json({
-        error: 'Backfill failed',
-        code: 'BACKFILL_ERROR',
-        details: error.message
-      }, { status: 500 });
+    // Validation
+    if (!merchant_name || typeof merchant_name !== 'string' || merchant_name.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Merchant name is required', code: 'VALIDATION_ERROR' },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      merchantsCreated: data || 0,
-      userId: userId
+    const trimmedName = merchant_name.trim();
+    if (trimmedName.length > 100) {
+      return NextResponse.json(
+        { error: 'Merchant name must be 100 characters or less', code: 'VALIDATION_ERROR' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = getServiceClient();
+
+    // Normalize the name
+    const normalizedResult = await supabase.rpc('normalize_merchant_name', {
+      input: trimmedName
     });
+    
+    const normalizedName = normalizedResult.data || trimmedName.toLowerCase().trim().replace(/\s+/g, ' ');
+
+    // Check for duplicate normalized name for this user
+    const { data: existing, error: checkError } = await supabase
+      .from('merchants')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('normalized_name', normalizedName)
+      .limit(1);
+
+    if (checkError) {
+      console.error('[API /merchants] Duplicate check error:', checkError);
+      return NextResponse.json(
+        { error: 'Failed to validate merchant name', code: 'VALIDATION_ERROR' },
+        { status: 500 }
+      );
+    }
+
+    if (existing && existing.length > 0) {
+      return NextResponse.json(
+        { error: 'A merchant with this name already exists', code: 'DUPLICATE_NAME' },
+        { status: 409 }
+      );
+    }
+
+    // Create the merchant
+    const { data, error } = await supabase
+      .from('merchants')
+      .insert({
+        user_id: userId,
+        merchant_name: trimmedName,
+        normalized_name: normalizedName,
+        transaction_count: 0,
+        last_used_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[API /merchants] Create error:', error);
+      return NextResponse.json(
+        { error: 'Failed to create merchant', code: 'CREATE_ERROR', details: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ merchant: data, success: true });
 
   } catch (error: any) {
     console.error('[API /merchants] POST error:', error);
+    return NextResponse.json({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      details: error?.message
+    }, { status: 500 });
+  }
+}
+
+// PATCH /api/merchants - Update a merchant
+export async function PATCH(request: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', code: 'AUTH_MISSING' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { id, merchant_name } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Merchant ID is required', code: 'VALIDATION_ERROR' },
+        { status: 400 }
+      );
+    }
+
+    if (!merchant_name || typeof merchant_name !== 'string' || merchant_name.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Merchant name is required', code: 'VALIDATION_ERROR' },
+        { status: 400 }
+      );
+    }
+
+    const trimmedName = merchant_name.trim();
+    if (trimmedName.length > 100) {
+      return NextResponse.json(
+        { error: 'Merchant name must be 100 characters or less', code: 'VALIDATION_ERROR' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = getServiceClient();
+
+    // Check if merchant belongs to user
+    const { data: existing, error: checkError } = await supabase
+      .from('merchants')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (checkError || !existing) {
+      return NextResponse.json(
+        { error: 'Merchant not found', code: 'NOT_FOUND' },
+        { status: 404 }
+      );
+    }
+
+    // Normalize the new name
+    const normalizedResult = await supabase.rpc('normalize_merchant_name', {
+      input: trimmedName
+    });
+    
+    const normalizedName = normalizedResult.data || trimmedName.toLowerCase().trim().replace(/\s+/g, ' ');
+
+    // Check for duplicate (excluding current merchant)
+    const { data: duplicate, error: dupError } = await supabase
+      .from('merchants')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('normalized_name', normalizedName)
+      .neq('id', id)
+      .limit(1);
+
+    if (dupError) {
+      console.error('[API /merchants] Duplicate check error:', dupError);
+      return NextResponse.json(
+        { error: 'Failed to validate merchant name', code: 'VALIDATION_ERROR' },
+        { status: 500 }
+      );
+    }
+
+    if (duplicate && duplicate.length > 0) {
+      return NextResponse.json(
+        { error: 'A merchant with this name already exists', code: 'DUPLICATE_NAME' },
+        { status: 409 }
+      );
+    }
+
+    // Update the merchant
+    const { data, error } = await supabase
+      .from('merchants')
+      .update({
+        merchant_name: trimmedName,
+        normalized_name: normalizedName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[API /merchants] Update error:', error);
+      return NextResponse.json(
+        { error: 'Failed to update merchant', code: 'UPDATE_ERROR', details: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ merchant: data, success: true });
+
+  } catch (error: any) {
+    console.error('[API /merchants] PATCH error:', error);
+    return NextResponse.json({
+      error: 'Internal server error',
+      code: 'INTERNAL_ERROR',
+      details: error?.message
+    }, { status: 500 });
+  }
+}
+
+// DELETE /api/merchants - Delete a merchant
+export async function DELETE(request: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized', code: 'AUTH_MISSING' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Merchant ID is required', code: 'VALIDATION_ERROR' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = getServiceClient();
+
+    // Check if merchant belongs to user
+    const { data: existing, error: checkError } = await supabase
+      .from('merchants')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (checkError || !existing) {
+      return NextResponse.json(
+        { error: 'Merchant not found', code: 'NOT_FOUND' },
+        { status: 404 }
+      );
+    }
+
+    // Delete the merchant
+    const { error } = await supabase
+      .from('merchants')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('[API /merchants] Delete error:', error);
+      return NextResponse.json(
+        { error: 'Failed to delete merchant', code: 'DELETE_ERROR', details: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, deleted: true });
+
+  } catch (error: any) {
+    console.error('[API /merchants] DELETE error:', error);
     return NextResponse.json({
       error: 'Internal server error',
       code: 'INTERNAL_ERROR',

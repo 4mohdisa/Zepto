@@ -92,6 +92,7 @@ export function TextareaField<T extends FieldValues>({
               placeholder={placeholder}
               className={`resize-none ${className || ''}`}
               {...field}
+              value={field.value ?? ''}
             />
           </FormControl>
           <FormMessage />
@@ -122,26 +123,35 @@ export function SelectField<T extends FieldValues>({
     <FormField
       control={control}
       name={name}
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>{label}</FormLabel>
-          <Select onValueChange={field.onChange} defaultValue={field.value}>
-            <FormControl>
-              <SelectTrigger>
-                <SelectValue placeholder={placeholder} />
-              </SelectTrigger>
-            </FormControl>
-            <SelectContent>
-              {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <FormMessage />
-        </FormItem>
-      )}
+      render={({ field }) => {
+        // Convert value to string for Radix Select, but use undefined for empty values
+        // This prevents controlled/uncontrolled mismatch warnings
+        const fieldValue = field.value ? String(field.value) : undefined
+        
+        return (
+          <FormItem>
+            <FormLabel>{label}</FormLabel>
+            <Select 
+              onValueChange={field.onChange} 
+              value={fieldValue}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder={placeholder} />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )
+      }}
     />
   )
 }
@@ -184,7 +194,13 @@ export function DatePickerField<T extends FieldValues>({
                 </Button>
               </FormControl>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
+            <PopoverContent 
+              className="w-auto p-0 pointer-events-auto" 
+              align="start"
+              sideOffset={4}
+              avoidCollisions={true}
+              collisionPadding={8}
+            >
               <Calendar
                 mode="single"
                 selected={field.value}

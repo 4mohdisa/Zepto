@@ -5,6 +5,7 @@ import { useDashboardCache, invalidateCache } from '@/hooks/use-data-cache'
 import { PeriodFilter } from './_components/period-filter'
 import { CurrentBalanceHero } from './_components/current-balance-hero'
 import { KpiRow } from './_components/kpi-row'
+import { DashboardExport } from './_components/dashboard-export'
 import { Button } from '@/components/ui/button'
 import { UploadIcon } from 'lucide-react'
 import { useState, Suspense, lazy, useCallback, useMemo } from 'react'
@@ -106,6 +107,8 @@ export default function DashboardPage() {
                 yearOptions={yearOptions}
               />
             </div>
+            
+            <DashboardExport data={data} loading={loading} />
             
             <Button
               onClick={() => setIsUploadOpen(true)}

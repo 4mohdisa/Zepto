@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { Upload, X, FileText, Loader2, Check, AlertCircle, Sparkles, Table, Download } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { primaryButton, secondaryButton } from "@/lib/styles"
 import { 
   parseCSV, 
   categorizeTransactionsWithAI, 
@@ -20,6 +22,7 @@ import {
 import { useAuth } from '@/providers'
 import { toast } from 'sonner'
 import { invalidateMerchantsCache } from '@/hooks/use-merchants'
+import { useCategories } from '@/hooks/use-categories'
 import { 
   trackEvent, 
   trackResult,
@@ -48,6 +51,13 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
   const [useAI, setUseAI] = useState(true)
   
   const { user } = useAuth()
+  const { categories, loading: categoriesLoading } = useCategories()
+  
+  // Memoize category options for the preview table
+  const categoryOptions = useMemo(() => {
+    if (!categories) return []
+    return categories.map(c => ({ value: c.name, label: c.name, id: c.id }))
+  }, [categories])
 
   const resetState = useCallback(() => {
     setFile(null)
@@ -58,6 +68,7 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
     setImportStats({ success: 0, failed: 0 })
     setIsProcessing(false)
     setError(null)
+    setUseAI(true)
   }, [])
 
   const handleClose = useCallback(() => {
@@ -98,25 +109,28 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
 
       setParsedData(result)
       
-      // Categorize transactions
+      // Categorize transactions using user's real categories
       let categorized: CategorizedTransaction[]
+      
+      // Prepare user categories for the categorization functions
+      const userCategoriesForAI = categories?.map(c => ({ id: c.id, name: c.name }))
       
       if (useAI && isAIAvailable()) {
         try {
           toast.info('Using AI to categorize transactions...')
-          categorized = await categorizeTransactionsWithAI(result.transactions)
+          categorized = await categorizeTransactionsWithAI(result.transactions, userCategoriesForAI)
         } catch (aiErr: any) {
-          // If AI fails (e.g., quota exceeded), fall back to rule-based
+          // If AI fails (e.g. quota exceeded), fall back to rule-based
           if (aiErr.message?.includes('quota') || aiErr.message?.includes('429')) {
             toast.warning('AI quota exceeded. Falling back to rule-based categorization...')
-            categorized = categorizeWithRules(result.transactions)
+            categorized = categorizeWithRules(result.transactions, userCategoriesForAI)
           } else {
             throw aiErr
           }
         }
       } else {
         toast.info('Using rule-based categorization...')
-        categorized = categorizeWithRules(result.transactions)
+        categorized = categorizeWithRules(result.transactions, userCategoriesForAI)
       }
       
       setCategorizedTransactions(categorized)
@@ -166,6 +180,7 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
           type: t.suggestedType,
           account_type: t.account_type || 'Checking',
           category: t.suggestedCategory,
+          categoryId: t.categoryId, // Pass the resolved category ID if available
           date: t.date,
           description: t.description,
         }))
@@ -257,33 +272,33 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
   // Render upload step
   const renderUploadStep = () => (
     <div className="space-y-6">
-      {/* AI Toggle */}
-      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
+      {/* AI Toggle - Using proper Switch component */}
+      <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <Sparkles className="h-5 w-5 text-purple-600" />
+          <div className={cn(
+            "p-2 rounded-lg transition-colors",
+            useAI && isAIAvailable() ? "bg-primary/10" : "bg-muted"
+          )}>
+            <Sparkles className={cn(
+              "h-5 w-5",
+              useAI && isAIAvailable() ? "text-primary" : "text-muted-foreground"
+            )} />
           </div>
           <div>
-            <p className="font-medium text-gray-900">AI Categorization</p>
-            <p className="text-sm text-gray-500">
+            <p className="font-medium text-foreground">AI Categorization</p>
+            <p className="text-sm text-muted-foreground">
               {isAIAvailable() 
                 ? 'Use AI to automatically categorize transactions' 
                 : 'AI not available - using rule-based categorization'}
             </p>
           </div>
         </div>
-        <Button
-          variant={useAI ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setUseAI(!useAI)}
+        <Switch
+          checked={useAI && isAIAvailable()}
+          onCheckedChange={setUseAI}
           disabled={!isAIAvailable()}
-          className={cn(
-            "transition-all",
-            useAI && "bg-gradient-to-r from-purple-600 to-blue-600"
-          )}
-        >
-          {useAI ? 'On' : 'Off'}
-        </Button>
+          aria-label="Toggle AI categorization"
+        />
       </div>
 
       {/* File Upload Area */}
@@ -291,19 +306,19 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
         <div className="flex items-center justify-center w-full">
           <label 
             htmlFor="dropzone-file" 
-            className="flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 border-gray-300 transition-all hover:border-purple-400"
+            className="flex flex-col items-center justify-center w-full h-56 border-2 border-dashed rounded-xl cursor-pointer bg-muted/30 hover:bg-muted/50 border-muted-foreground/25 hover:border-muted-foreground/40 transition-all"
           >
             <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4 text-center">
-              <div className="p-4 bg-purple-100 rounded-full mb-4">
-                <Upload className="w-8 h-8 text-purple-600" />
+              <div className="p-4 bg-background rounded-full mb-4 shadow-sm">
+                <Upload className="w-8 h-8 text-muted-foreground" />
               </div>
-              <p className="mb-2 text-lg font-medium text-gray-900">
-                <span className="text-purple-600">Click to upload</span> or drag and drop
+              <p className="mb-2 text-base font-medium text-foreground">
+                <span className="text-primary">Click to upload</span> or drag and drop
               </p>
-              <p className="text-sm text-gray-500 max-w-xs">
+              <p className="text-sm text-muted-foreground max-w-xs">
                 Upload your bank statement CSV file. We support formats from most major banks.
               </p>
-              <p className="text-xs text-gray-400 mt-2">CSV files only (MAX. 10MB)</p>
+              <p className="text-xs text-muted-foreground/60 mt-2">CSV files only (MAX. 10MB)</p>
             </div>
             <input 
               id="dropzone-file" 
@@ -316,21 +331,21 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between p-4 bg-background border rounded-xl shadow-sm">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-lg">
-                <FileText className="w-6 h-6 text-green-600" />
+              <div className="p-3 bg-muted rounded-lg">
+                <FileText className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="font-medium text-gray-900">{file.name}</p>
-                <p className="text-sm text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
+                <p className="font-medium text-foreground">{file.name}</p>
+                <p className="text-sm text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
               </div>
             </div>
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={handleRemoveFile}
-              className="text-gray-400 hover:text-red-600"
+              className="text-muted-foreground hover:text-destructive"
             >
               <X className="w-5 h-5" />
             </Button>
@@ -339,7 +354,7 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
           <Button 
             onClick={handleParseCSV}
             disabled={isProcessing}
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+            className={cn(primaryButton, "w-full")}
           >
             {isProcessing ? (
               <>
@@ -357,20 +372,20 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
       )}
 
       {/* CSV Template Download */}
-      <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+      <div className="p-4 bg-muted/50 rounded-lg border">
         <div className="flex items-start gap-3">
-          <div className="p-2 bg-blue-100 rounded-lg shrink-0">
-            <FileText className="h-4 w-4 text-blue-600" />
+          <div className="p-2 bg-background rounded-lg shrink-0 shadow-sm">
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </div>
           <div className="flex-1">
-            <p className="font-medium text-blue-900">Need a template?</p>
-            <p className="text-sm text-blue-700 mt-1">
-              Download our CSV template to see the expected format. Your bank's CSV export should work too!
+            <p className="font-medium text-foreground">Need a template?</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Download our CSV template to see the expected format. Your bank&apos;s CSV export should work too!
             </p>
             <a 
               href="/templates/transaction_template.csv" 
               download
-              className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-blue-700 hover:text-blue-800 hover:underline"
+              className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-primary hover:underline"
             >
               <Download className="h-3.5 w-3.5" />
               Download Template
@@ -393,96 +408,69 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-gray-900">Preview Transactions</h3>
-          <p className="text-sm text-gray-500">
+          <h3 className="font-semibold text-foreground">Preview Transactions</h3>
+          <p className="text-sm text-muted-foreground">
             {categorizedTransactions.length} transactions found • 
             AI categorized {categorizedTransactions.filter(t => t.confidence > 70).length} with high confidence
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setStep('upload')}>
+          <Button variant="outline" onClick={() => setStep('upload')} className={secondaryButton}>
             Back
           </Button>
           <Button 
             onClick={handleImport}
             disabled={isProcessing}
-            className="bg-gradient-to-r from-purple-600 to-blue-600"
+            className={primaryButton}
           >
             Import All
           </Button>
         </div>
       </div>
 
+      <Separator />
+
       {/* Transaction Preview Table */}
       <div className="border rounded-xl overflow-hidden max-h-[400px] overflow-y-auto">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 sticky top-0">
+          <thead className="bg-muted sticky top-0">
             <tr>
-              <th className="px-4 py-3 text-left font-medium text-gray-700">Date</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-700">Merchant</th>
-              <th className="px-4 py-3 text-right font-medium text-gray-700">Amount</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-700">Category</th>
-              <th className="px-4 py-3 text-center font-medium text-gray-700">Type</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Merchant</th>
+              <th className="px-4 py-3 text-right font-medium text-muted-foreground">Amount</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Category</th>
+              <th className="px-4 py-3 text-center font-medium text-muted-foreground">Type</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {categorizedTransactions.slice(0, 50).map((transaction, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{transaction.date}</td>
+              <tr key={index} className="hover:bg-muted/50">
+                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{transaction.date}</td>
                 <td className="px-4 py-3">
-                  <div className="font-medium text-gray-900" title={transaction.description}>
+                  <div className="font-medium text-foreground" title={transaction.description}>
                     {transaction.name || transaction.description.substring(0, 30)}
                   </div>
-                  <div className="text-xs text-gray-500 max-w-[180px] truncate" title={transaction.description}>
+                  <div className="text-xs text-muted-foreground max-w-[180px] truncate" title={transaction.description}>
                     {transaction.description}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right font-medium">
+                <td className="px-4 py-3 text-right font-medium font-mono">
                   ${transaction.amount.toFixed(2)}
                 </td>
                 <td className="px-4 py-3">
                   <select
                     value={transaction.suggestedCategory}
                     onChange={(e) => handleUpdateCategory(index, e.target.value)}
-                    className="text-sm border rounded px-2 py-1 bg-white"
+                    className="text-sm border rounded px-2 py-1 bg-background"
+                    disabled={categoriesLoading}
                   >
-                    {/* Group categories by type */}
-                    <optgroup label="Income">
-                      <option value="Salary">Salary</option>
-                      <option value="Freelance">Freelance</option>
-                      <option value="Investments">Investments</option>
-                      <option value="Other Income">Other Income</option>
-                    </optgroup>
-                    <optgroup label="Housing">
-                      <option value="Housing">Housing</option>
-                      <option value="Rent">Rent</option>
-                      <option value="Utilities">Utilities</option>
-                      <option value="Bills">Bills</option>
-                    </optgroup>
-                    <optgroup label="Daily">
-                      <option value="Food">Food</option>
-                      <option value="Groceries">Groceries</option>
-                      <option value="Restaurant">Restaurant</option>
-                      <option value="Coffee">Coffee</option>
-                    </optgroup>
-                    <optgroup label="Transport">
-                      <option value="Transport">Transport</option>
-                      <option value="Gas">Gas</option>
-                      <option value="Parking">Parking</option>
-                      <option value="Taxi">Taxi</option>
-                    </optgroup>
-                    <optgroup label="Lifestyle">
-                      <option value="Entertainment">Entertainment</option>
-                      <option value="Shopping">Shopping</option>
-                      <option value="Subscriptions">Subscriptions</option>
-                      <option value="Health">Health</option>
-                    </optgroup>
-                    <optgroup label="Other">
-                      <option value="Savings">Savings</option>
-                      <option value="Charity">Charity</option>
-                      <option value="Education">Education</option>
-                      <option value="Miscellaneous">Miscellaneous</option>
-                    </optgroup>
+                    {categoriesLoading ? (
+                      <option>Loading categories...</option>
+                    ) : (
+                      categoryOptions.map((cat) => (
+                        <option key={cat.id} value={cat.value}>{cat.label}</option>
+                      ))
+                    )}
                   </select>
                   {transaction.confidence < 50 && (
                     <span className="ml-2 text-xs text-yellow-600" title="Low confidence">
@@ -496,8 +484,8 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
                     className={cn(
                       "px-2 py-1 rounded text-xs font-medium transition-colors",
                       transaction.suggestedType === 'Income' 
-                        ? "bg-green-100 text-green-700 hover:bg-green-200"
-                        : "bg-red-100 text-red-700 hover:bg-red-200"
+                        ? "bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400"
+                        : "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400"
                     )}
                   >
                     {transaction.suggestedType}
@@ -510,7 +498,7 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
       </div>
 
       {categorizedTransactions.length > 50 && (
-        <p className="text-sm text-gray-500 text-center">
+        <p className="text-sm text-muted-foreground text-center">
           Showing first 50 of {categorizedTransactions.length} transactions
         </p>
       )}
@@ -525,17 +513,17 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
     return (
       <div className="flex flex-col items-center justify-center py-12 space-y-6">
         <div className="relative">
-          <div className="w-20 h-20 rounded-full border-4 border-purple-100 flex items-center justify-center">
-            <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
+          <div className="w-20 h-20 rounded-full border-4 border-muted flex items-center justify-center">
+            <Loader2 className="w-10 h-10 text-primary animate-spin" />
           </div>
-          <div className="absolute -bottom-2 -right-2 bg-green-500 text-white text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center">
+          <div className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center">
             {Math.round(progress)}%
           </div>
         </div>
         
         <div className="text-center space-y-2">
-          <h3 className="text-xl font-semibold text-gray-900">Importing Transactions...</h3>
-          <p className="text-gray-500">
+          <h3 className="text-xl font-semibold text-foreground">Importing Transactions...</h3>
+          <p className="text-muted-foreground">
             {currentIndex} of {total} transactions processed
           </p>
         </div>
@@ -557,24 +545,24 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
   // Render complete step
   const renderCompleteStep = () => (
     <div className="flex flex-col items-center justify-center py-12 space-y-6">
-      <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
-        <Check className="w-10 h-10 text-green-600" />
+      <div className="w-20 h-20 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+        <Check className="w-10 h-10 text-green-600 dark:text-green-400" />
       </div>
       
       <div className="text-center space-y-2">
-        <h3 className="text-xl font-semibold text-gray-900">Import Complete!</h3>
-        <p className="text-gray-500">
+        <h3 className="text-xl font-semibold text-foreground">Import Complete!</h3>
+        <p className="text-muted-foreground">
           {importStats.success} transactions imported successfully
         </p>
         {importStats.failed > 0 && (
-          <p className="text-sm text-red-500">
+          <p className="text-sm text-red-600">
             {importStats.failed} transactions failed to import
           </p>
         )}
       </div>
       
       <div className="flex gap-3">
-        <Button variant="outline" onClick={handleClose}>
+        <Button variant="outline" onClick={handleClose} className={secondaryButton}>
           Close
         </Button>
         <Button 
@@ -582,7 +570,7 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
             resetState()
             setStep('upload')
           }}
-          className="bg-gradient-to-r from-purple-600 to-blue-600"
+          className={primaryButton}
         >
           Import Another File
         </Button>
@@ -593,22 +581,22 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
   // Render error step
   const renderErrorStep = () => (
     <div className="flex flex-col items-center justify-center py-12 space-y-6">
-      <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center">
-        <AlertCircle className="w-10 h-10 text-red-600" />
+      <div className="w-20 h-20 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+        <AlertCircle className="w-10 h-10 text-red-600 dark:text-red-400" />
       </div>
       
       <div className="text-center space-y-2">
-        <h3 className="text-xl font-semibold text-gray-900">Import Failed</h3>
-        <p className="text-gray-500 max-w-sm">{error}</p>
+        <h3 className="text-xl font-semibold text-foreground">Import Failed</h3>
+        <p className="text-muted-foreground max-w-sm">{error}</p>
       </div>
       
       <div className="flex gap-3">
-        <Button variant="outline" onClick={handleClose}>
+        <Button variant="outline" onClick={handleClose} className={secondaryButton}>
           Close
         </Button>
         <Button 
           onClick={() => setStep('upload')}
-          className="bg-gradient-to-r from-purple-600 to-blue-600"
+          className={primaryButton}
         >
           Try Again
         </Button>
@@ -618,19 +606,21 @@ export function UploadDialog({ open, onOpenChange, onSuccess }: UploadDialogProp
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-[900px] max-h-[95vh] overflow-y-auto p-4 sm:p-6">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-            <Table className="w-6 h-6 text-purple-600" />
-            Import Transactions from CSV
+      <DialogContent className="w-[calc(100%-1rem)] sm:max-w-[900px] max-h-[95vh] overflow-y-auto p-4 sm:p-6 gap-0">
+        <DialogHeader className="pb-4">
+          <DialogTitle className="text-xl font-semibold flex items-center gap-2">
+            <Table className="w-5 h-5 text-primary" />
+            Import Transactions
           </DialogTitle>
-          <DialogDescription className="text-gray-500">
+          <DialogDescription className="text-muted-foreground">
             Upload your bank statement or transaction history CSV file. 
             Our AI will automatically categorize each transaction for you.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-6">
+        <Separator className="mb-6" />
+
+        <div>
           {step === 'upload' && renderUploadStep()}
           {step === 'preview' && renderPreviewStep()}
           {step === 'processing' && renderProcessingStep()}

@@ -15,7 +15,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
-import { categories } from "@/constants/categories"
 import { Transaction } from "@/types/transaction"
 import { formatCurrency } from "@/lib/utils/format"
 
@@ -25,10 +24,6 @@ interface ColumnOptions {
   type: TransactionType
   onEdit: (transaction: Transaction) => void
   onDelete: (id: number | string) => void
-}
-
-function getCategoryName(categoryId: number): string {
-  return categories.find(cat => cat.id === categoryId)?.name || 'Uncategorized'
 }
 
 function formatDate(dateValue: string | Date | null | undefined): string | null {
@@ -127,8 +122,8 @@ const categoryColumn: ColumnDef<Transaction> = {
   accessorKey: "category_name",
   header: "Category",
   cell: ({ row }) => {
-    // Use original data to access both category_name and category_id
-    const categoryId = row.original.category_id
+    // Use the denormalized category_name from the transaction
+    // This is populated by the API and reflects the actual DB value
     const categoryName = row.original.category_name
     
     if (categoryName) {
@@ -138,17 +133,6 @@ const categoryColumn: ColumnDef<Transaction> = {
           className="text-xs font-medium rounded-md px-2 py-1 bg-muted/20 text-muted-foreground border-muted"
         >
           {categoryName}
-        </Badge>
-      )
-    }
-    
-    if (categoryId) {
-      return (
-        <Badge 
-          variant="outline" 
-          className="text-xs font-medium rounded-md px-2 py-1 bg-muted/20 text-muted-foreground border-muted"
-        >
-          {getCategoryName(categoryId)}
         </Badge>
       )
     }

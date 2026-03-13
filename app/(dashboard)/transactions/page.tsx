@@ -34,6 +34,8 @@ type Transaction = {
   account_type: string
   categories: { id: number; name: string } | null
   category_id: number | null
+  merchant_id: string | null
+  merchants: { id: string; merchant_name: string } | null
 }
 
 export default function TransactionsPage() {
@@ -137,6 +139,7 @@ export default function TransactionsPage() {
     amount: editingTransaction.amount,
     type: editingTransaction.type,
     category_id: editingTransaction.category_id?.toString() || '',
+    merchant_id: editingTransaction.merchant_id || '',
     date: editingTransaction.date, // Keep as string, dialog will handle it
     description: editingTransaction.description || '',
     account_type: editingTransaction.account_type,

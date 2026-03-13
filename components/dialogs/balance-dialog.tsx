@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSupabaseClient } from '@/lib/supabase/client';
 import { useAuth } from '@/providers';
 import { toast } from 'sonner';
 import { accountTypes } from '@/constants/account-types';
@@ -48,8 +47,7 @@ export function BalanceDialog({ open, onOpenChange, onSuccess }: BalanceDialogPr
   const [historyAccountFilter, setHistoryAccountFilter] = useState('all');
   
   const { user } = useAuth();
-  const supabase = useSupabaseClient();
-  const { history, loading: historyLoading, refetch: refetchHistory, addHistoryRecord } = useBalanceHistory({
+  const { history, loading: historyLoading, refetch: refetchHistory } = useBalanceHistory({
     accountType: historyAccountFilter === 'all' ? undefined : historyAccountFilter,
     limit: 50,
   });
@@ -92,24 +90,26 @@ export function BalanceDialog({ open, onOpenChange, onSuccess }: BalanceDialogPr
     });
 
     try {
-      // 1. Update current snapshot in account_balances
-      const today = new Date().toISOString().split('T')[0]
-      const { error: upsertError } = await supabase
-        .from('account_balances')
-        .upsert({
-          user_id: user.id,
+      // Use API route for balance update (server-side, bypasses RLS issues)
+      const response = await fetch('/api/balances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           account_type: accountType,
           current_balance: balanceValue,
-          effective_date: today,
-          last_updated: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id,account_type',
-        });
+          note: note || null,
+        }),
+      });
 
-      if (upsertError) throw upsertError;
+      const result = await response.json();
 
-      // 2. Insert immutable history record via API
-      await addHistoryRecord(accountType, balanceValue, note);
+      if (!response.ok) {
+        // Handle specific error codes
+        if (result.code === 'TABLE_MISSING') {
+          throw new Error('Balance table not set up. Please run the database migration.');
+        }
+        throw new Error(result.error || result.details || 'Failed to update balance');
+      }
 
       debugLogger.info('balance', 'Balance updated and history recorded', {
         accountType,
@@ -127,21 +127,14 @@ export function BalanceDialog({ open, onOpenChange, onSuccess }: BalanceDialogPr
       handleClose();
     } catch (err: any) {
       const errorMessage = err?.message || 'Unknown error'
-      const errorCode = err?.code
       
       debugLogger.error('balance', 'Failed to update balance', {
         accountType,
         balance: balanceValue,
         error: errorMessage,
-        code: errorCode,
       });
       
-      // Show helpful message for specific errors
-      if (errorCode === 'TABLE_MISSING') {
-        toast.error('Balance history table not set up. Please run the database migration.')
-      } else {
-        toast.error(`Failed to update balance: ${errorMessage}`);
-      }
+      toast.error(`Failed to update balance: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
     }

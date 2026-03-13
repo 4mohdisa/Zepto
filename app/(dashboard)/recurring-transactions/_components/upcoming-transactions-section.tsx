@@ -38,6 +38,7 @@ export function UpcomingTransactionsSection({
                 <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 whitespace-nowrap text-right">Amount</TableHead>
                 <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 whitespace-nowrap">Type</TableHead>
                 <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 whitespace-nowrap">Category</TableHead>
+                <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 whitespace-nowrap">Merchant</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -50,6 +51,7 @@ export function UpcomingTransactionsSection({
                       <TableCell className="py-4 px-4"><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell className="py-4 px-4"><Skeleton className="h-4 w-16 ml-auto" /></TableCell>
                       <TableCell className="py-4 px-4"><Skeleton className="h-5 w-14" /></TableCell>
+                      <TableCell className="py-4 px-4"><Skeleton className="h-5 w-20" /></TableCell>
                       <TableCell className="py-4 px-4"><Skeleton className="h-5 w-20" /></TableCell>
                     </TableRow>
                   ))}
@@ -90,11 +92,19 @@ export function UpcomingTransactionsSection({
                         {transaction.category_name || 'Uncategorized'}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-gray-600 py-4 px-4">
+                      <Badge 
+                        variant="outline" 
+                        className="text-xs font-medium rounded-md px-2 py-1 bg-blue-50 text-blue-700 border-blue-200"
+                      >
+                        {transaction.merchant_name || '-'}
+                      </Badge>
+                    </TableCell>
                   </TableRow>
                 ))
               ) : hasActiveRecurring ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32">
+                  <TableCell colSpan={6} className="h-32">
                     <div className="flex flex-col items-center justify-center h-full px-4">
                       <p className="text-gray-500">No upcoming transactions in the current period</p>
                     </div>
@@ -102,7 +112,7 @@ export function UpcomingTransactionsSection({
                 </TableRow>
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-48">
+                  <TableCell colSpan={6} className="h-48">
                     <div className="flex flex-col items-center justify-center h-full px-4">
                       <div className="rounded-full w-16 h-16 mb-4 flex items-center justify-center bg-gradient-to-br from-[#635BFF]/10 to-blue-500/10">
                         <CreditCard className="h-8 w-8 text-[#635BFF]" />

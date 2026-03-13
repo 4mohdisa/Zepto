@@ -49,6 +49,7 @@ interface RecurringTransactionInsertData {
   type: TransactionType
   account_type: AccountType
   category_id: number
+  merchant_id: string | null
   description: string | null
   frequency: FrequencyType
   start_date: string
@@ -81,7 +82,7 @@ export function buildTransactionData(input: TransactionInput): TransactionInsert
 /**
  * Builds recurring transaction data for database insertion
  */
-export function buildRecurringTransactionData(input: RecurringTransactionInput): RecurringTransactionInsertData {
+export function buildRecurringTransactionData(input: RecurringTransactionInput & { merchant_id?: string | null }): RecurringTransactionInsertData {
   const now = new Date().toISOString()
   
   return {
@@ -91,6 +92,7 @@ export function buildRecurringTransactionData(input: RecurringTransactionInput):
     type: input.type || 'Expense',
     account_type: input.account_type || 'Cash',
     category_id: parseCategoryId(input.category_id),
+    merchant_id: input.merchant_id || null,
     description: input.description || null,
     frequency: input.frequency,
     start_date: formatDateToISO(input.start_date),
@@ -120,6 +122,8 @@ export function buildPredictedTransaction(
     account_type: recurringTransaction.account_type,
     category_id: recurringTransaction.category_id,
     category_name: recurringTransaction.category_name || 'Uncategorized',
+    merchant_id: recurringTransaction.merchant_id || null,
+    merchant_name: recurringTransaction.merchant_name || recurringTransaction.merchants?.merchant_name || null,
     description: recurringTransaction.description 
       ? `${recurringTransaction.description} (Upcoming)` 
       : 'Upcoming transaction',
@@ -138,7 +142,7 @@ export function buildTransactionFromRecurring(
   recurringTransaction: RecurringTransaction,
   date: Date,
   userId: string
-): TransactionInsertData & { recurring_transaction_id: number | null } {
+): TransactionInsertData & { recurring_transaction_id: number | null; merchant_id: string | null } {
   const dateStr = formatDateToISO(date)
   const now = new Date().toISOString()
   
@@ -155,6 +159,7 @@ export function buildTransactionFromRecurring(
     category_id: recurringTransaction.category_id,
     recurring_frequency: recurringTransaction.frequency as FrequencyType,
     recurring_transaction_id: recurringTransaction.id as number || null,
+    merchant_id: recurringTransaction.merchant_id || null,
     created_at: now,
     updated_at: now,
   }

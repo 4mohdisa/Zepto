@@ -223,6 +223,20 @@ export class TransactionService {
     // Destructure to remove id field and create a new object without it
     const { id, ...dataWithoutId } = data as any;
 
+    // Validate merchant_id if provided
+    if (dataWithoutId.merchant_id) {
+      const { data: merchant, error: merchantError } = await this.supabase
+        .from('merchants')
+        .select('id')
+        .eq('id', dataWithoutId.merchant_id)
+        .eq('user_id', userId)
+        .single();
+      
+      if (merchantError || !merchant) {
+        throw new Error('Invalid merchant selected or merchant does not belong to user');
+      }
+    }
+
     const recurringData = {
       ...dataWithoutId,
       user_id: userId,
@@ -230,6 +244,7 @@ export class TransactionService {
       account_type: accountType,
       frequency: frequency,
       category_id: typeof data.category_id === 'string' ? parseInt(data.category_id) : (data.category_id || 1),
+      merchant_id: dataWithoutId.merchant_id || null,
       start_date: formatDateToISO(data.start_date),
       end_date: data.end_date ? formatDateToISO(data.end_date) : null,
       created_at: data.created_at || new Date().toISOString(),
@@ -342,6 +357,31 @@ export class TransactionService {
     if (formattedData.end_date !== undefined && formattedData.end_date !== null) {
       formattedData.end_date = formatDateToISO(formattedData.end_date);
     }
+
+    // Handle merchant_id update
+    if (formattedData.merchant_id !== undefined) {
+      if (formattedData.merchant_id === null || formattedData.merchant_id === '') {
+        // Clear merchant - treat empty string as null
+        formattedData.merchant_id = null;
+      } else {
+        // Validate merchant belongs to user - use maybeSingle() to handle zero rows gracefully
+        const { data: merchant, error: merchantError } = await this.supabase
+          .from('merchants')
+          .select('id')
+          .eq('id', formattedData.merchant_id)
+          .eq('user_id', userId.toString())
+          .maybeSingle(); // Use maybeSingle instead of single to avoid PGRST116 error
+        
+        if (merchantError) {
+          console.error('[TransactionService] Merchant validation error:', merchantError);
+          throw new Error('Failed to validate merchant selection');
+        }
+        
+        if (!merchant) {
+          throw new Error('Invalid merchant selected or merchant does not belong to user');
+        }
+      }
+    }
     
     const { data: recurringTransaction, error } = await this.supabase
       .from('recurring_transactions')
@@ -404,7 +444,7 @@ export class TransactionService {
     // Try string first (for proper UUID format), then fallback to number if needed for backward compatibility
     const { data, error } = await this.supabase
       .from('recurring_transactions')
-      .select('*, categories(name)')
+      .select('*, categories(name), merchants(id, merchant_name)')
       .eq('user_id', userIdAsString)
       .order('created_at', { ascending: false });
 

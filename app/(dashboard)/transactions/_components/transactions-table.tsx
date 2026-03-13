@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback, memo } from 'react'
 import { formatCurrency } from '@/lib/utils/format'
 import { format } from 'date-fns'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
 import { Loader2, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -25,6 +26,9 @@ interface Transaction {
   account_type: string
   categories: { id: number; name: string } | null
   category_id: number | null
+  category_name?: string | null
+  merchant_id: string | null
+  merchants: { id: string; merchant_name: string } | null
 }
 
 interface TransactionsTableProps {
@@ -40,6 +44,75 @@ interface TransactionsTableProps {
   someSelected: boolean
   onEdit?: (transaction: Transaction) => void
   onDelete?: (transaction: Transaction) => void
+}
+
+// Category badge component with consistent styling
+// Uses joined category data first, falls back to category_name field, then 'Uncategorized'
+function CategoryBadge({ 
+  category,
+  categoryName 
+}: { 
+  category: { id: number; name: string } | null | undefined
+  categoryName?: string | null
+}) {
+  // Priority: 1. Joined category name, 2. Denormalized category_name field, 3. Uncategorized
+  const name = category?.name || categoryName || 'Uncategorized'
+  
+  return (
+    <Badge 
+      variant="outline" 
+      className={cn(
+        "text-xs font-medium rounded-md px-2 py-1 max-w-full",
+        "bg-gray-50 text-gray-700 border-gray-200",
+        "hover:bg-gray-100 transition-colors"
+      )}
+      title={name}
+    >
+      <span className="truncate max-w-[100px] inline-block">{name}</span>
+    </Badge>
+  )
+}
+
+// Merchant badge component with consistent styling
+function MerchantBadge({ merchant }: { merchant: { id: string; merchant_name: string } | null | undefined }) {
+  const name = merchant?.merchant_name
+  
+  if (!name) {
+    return (
+      <span className="text-xs text-gray-400 italic">-</span>
+    )
+  }
+  
+  return (
+    <Badge 
+      variant="outline" 
+      className={cn(
+        "text-xs font-medium rounded-md px-2 py-1 max-w-full",
+        "bg-blue-50 text-blue-700 border-blue-200",
+        "hover:bg-blue-100 transition-colors"
+      )}
+      title={name}
+    >
+      <span className="truncate max-w-[100px] inline-block">{name}</span>
+    </Badge>
+  )
+}
+
+// Type badge component
+function TypeBadge({ type }: { type: 'Income' | 'Expense' }) {
+  return (
+    <Badge 
+      variant="secondary" 
+      className={cn(
+        "text-xs font-medium rounded-full px-2 py-0.5",
+        type === 'Income' 
+          ? "bg-green-100 text-green-700 border-green-200" 
+          : "bg-red-100 text-red-700 border-red-200"
+      )}
+    >
+      {type === 'Income' ? 'In' : 'Ex'}
+    </Badge>
+  )
 }
 
 // Memoized table row component to prevent unnecessary re-renders
@@ -90,17 +163,17 @@ const TransactionRow = memo(function TransactionRow({
           aria-label={`Select transaction ${transaction.name}`}
         />
       </td>
-      <td className="px-3 py-3 text-sm whitespace-nowrap w-28">
+      <td className="px-3 py-3 text-sm whitespace-nowrap w-28 text-gray-600">
         {format(new Date(transaction.date), 'MMM d, yyyy')}
       </td>
       <td className="px-3 py-3 w-[35%] min-w-0">
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate" title={transaction.name}>
+          <p className="text-sm font-medium truncate text-gray-900" title={transaction.name}>
             {transaction.name}
           </p>
           {transaction.description && (
             <p
-              className="text-xs text-muted-foreground truncate hidden sm:block"
+              className="text-xs text-gray-500 truncate hidden sm:block"
               title={transaction.description}
             >
               {transaction.description}
@@ -109,26 +182,23 @@ const TransactionRow = memo(function TransactionRow({
         </div>
       </td>
       <td className="px-3 py-3 w-28">
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 truncate max-w-full">
-          {transaction.categories?.name || 'Uncategorized'}
-        </span>
+        <CategoryBadge 
+          category={transaction.categories} 
+          categoryName={transaction.category_name}
+        />
+      </td>
+      <td className="px-3 py-3 w-28">
+        <MerchantBadge merchant={transaction.merchants} />
       </td>
       <td className={cn(
-        "px-3 py-3 text-sm text-right font-medium whitespace-nowrap w-28",
+        "px-3 py-3 text-sm text-right font-medium whitespace-nowrap w-28 font-mono",
         transaction.type === 'Income' ? 'text-green-600' : 'text-red-600'
       )}>
         {transaction.type === 'Income' ? '+' : '-'}
         {formatCurrency(transaction.amount)}
       </td>
       <td className="px-3 py-3 text-center w-16">
-        <span className={cn(
-          "inline-flex px-2 py-0.5 rounded-full text-xs font-medium",
-          transaction.type === 'Income'
-            ? 'bg-green-100 text-green-700'
-            : 'bg-red-100 text-red-700'
-        )}>
-          {transaction.type === 'Income' ? 'In' : 'Ex'}
-        </span>
+        <TypeBadge type={transaction.type} />
       </td>
       <td className="px-3 py-3 text-right w-14" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
@@ -209,6 +279,7 @@ export function TransactionsTable({
               <th className="px-3 py-3 w-[35%]"><Skeleton className="h-4 w-20" /></th>
               <th className="px-3 py-3 w-28"><Skeleton className="h-4 w-16" /></th>
               <th className="px-3 py-3 w-28"><Skeleton className="h-4 w-16" /></th>
+              <th className="px-3 py-3 w-28"><Skeleton className="h-4 w-16" /></th>
               <th className="px-3 py-3 w-16"><Skeleton className="h-4 w-12" /></th>
               <th className="px-3 py-3 w-14"><Skeleton className="h-4 w-8" /></th>
             </tr>
@@ -219,6 +290,7 @@ export function TransactionsTable({
                 <td className="px-3 py-3"><Skeleton className="h-4 w-4" /></td>
                 <td className="px-3 py-3"><Skeleton className="h-4 w-20" /></td>
                 <td className="px-3 py-3"><Skeleton className="h-4 w-32" /></td>
+                <td className="px-3 py-3"><Skeleton className="h-4 w-20" /></td>
                 <td className="px-3 py-3"><Skeleton className="h-4 w-20" /></td>
                 <td className="px-3 py-3"><Skeleton className="h-4 w-16" /></td>
                 <td className="px-3 py-3"><Skeleton className="h-4 w-8" /></td>
@@ -263,6 +335,7 @@ export function TransactionsTable({
             <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-28">Date</th>
             <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-[35%]">Name</th>
             <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-28">Category</th>
+            <th className="px-3 py-3 text-left text-sm font-medium text-gray-700 w-28">Merchant</th>
             <th className="px-3 py-3 text-right text-sm font-medium text-gray-700 w-28">Amount</th>
             <th className="px-3 py-3 text-center text-sm font-medium text-gray-700 w-16">Type</th>
             <th className="px-3 py-3 text-right text-sm font-medium text-gray-700 w-14">Actions</th>

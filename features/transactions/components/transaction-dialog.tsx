@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { invalidateMerchantsCache } from '@/hooks/use-merchants'
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select"
 import { transactionTypes } from "@/constants/transactiontypes"
 import { useCategories } from "@/hooks/use-categories"
+import { useMerchants } from "@/hooks/use-merchants"
 import { accountTypes } from "@/constants/account-types"
 import { useAuth } from '@/providers'
 import { useSupabaseClient } from '@/lib/supabase/client'
@@ -44,6 +45,7 @@ const transactionSchema = z.object({
   type: z.enum(['Income', 'Expense']),
   account_type: z.string().min(1, 'Account is required'),
   category_id: z.string().min(1, 'Category is required'),
+  merchant_id: z.string().optional(),
   description: z.string().optional(),
 })
 
@@ -57,6 +59,39 @@ interface TransactionDialogProps {
   onSuccess?: () => void
 }
 
+// Helper to safely normalize initial data for the form
+function normalizeInitialData(
+  initialData: Partial<TransactionFormValues> & { id?: number } | undefined,
+  mode: 'create' | 'edit'
+): TransactionFormValues {
+  if (!initialData || mode === 'create') {
+    return {
+      name: '',
+      amount: 0,
+      date: format(new Date(), 'yyyy-MM-dd'),
+      type: 'Expense',
+      account_type: 'Checking',
+      category_id: '',
+      merchant_id: '',
+      description: '',
+    }
+  }
+
+  // For edit mode, carefully convert values to strings for form fields
+  return {
+    name: initialData.name || '',
+    amount: typeof initialData.amount === 'number' ? initialData.amount : 0,
+    date: initialData.date || format(new Date(), 'yyyy-MM-dd'),
+    type: initialData.type || 'Expense',
+    account_type: initialData.account_type || 'Checking',
+    // Ensure category_id is always a string for the Select component
+    category_id: initialData.category_id != null ? String(initialData.category_id) : '',
+    // Ensure merchant_id is always a string or undefined (not null)
+    merchant_id: initialData.merchant_id != null ? String(initialData.merchant_id) : '',
+    description: initialData.description || '',
+  }
+}
+
 export function TransactionDialog({
   isOpen,
   onClose,
@@ -67,7 +102,15 @@ export function TransactionDialog({
   const { user } = useAuth()
   const supabase = useSupabaseClient()
   const { categories, loading: categoriesLoading } = useCategories()
+  const { merchants, loading: merchantsLoading } = useMerchants()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Track if we've reset for this dialog open session
+  const hasResetRef = useRef(false)
+  // Track the last initialData id we reset for
+  const lastInitialDataIdRef = useRef<number | undefined>(undefined)
+  // Track if data is ready (categories and merchants loaded)
+  const isDataReady = !categoriesLoading && !merchantsLoading && categories && merchants
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
@@ -78,36 +121,33 @@ export function TransactionDialog({
       type: 'Expense',
       account_type: 'Checking',
       category_id: '',
+      merchant_id: '',
       description: '',
     },
   })
 
-  // Reset form when dialog opens/closes or initialData changes
+  // Reset form when dialog opens or when editing a different transaction
   useEffect(() => {
-    if (isOpen) {
-      if (initialData && mode === 'edit') {
-        form.reset({
-          name: initialData.name || '',
-          amount: initialData.amount || 0,
-          date: initialData.date || format(new Date(), 'yyyy-MM-dd'),
-          type: initialData.type || 'Expense',
-          account_type: initialData.account_type || 'Checking',
-          category_id: initialData.category_id?.toString() || '',
-          description: initialData.description || '',
-        })
-      } else {
-        form.reset({
-          name: '',
-          amount: 0,
-          date: format(new Date(), 'yyyy-MM-dd'),
-          type: 'Expense',
-          account_type: 'Checking',
-          category_id: '',
-          description: '',
-        })
-      }
+    if (!isOpen) {
+      // Reset the flag when dialog closes
+      hasResetRef.current = false
+      return
     }
-  }, [isOpen, initialData, mode, form])
+
+    // Wait for categories and merchants to be loaded before resetting
+    // This ensures Select components have their options before the form sets values
+    if (!isDataReady) return
+
+    // Only reset if we haven't for this open session, or if editing a different record
+    const isDifferentRecord = initialData?.id !== lastInitialDataIdRef.current
+    
+    if (!hasResetRef.current || isDifferentRecord) {
+      const normalized = normalizeInitialData(initialData, mode)
+      form.reset(normalized)
+      hasResetRef.current = true
+      lastInitialDataIdRef.current = initialData?.id
+    }
+  }, [isOpen, initialData?.id, mode, isDataReady]) // Only depend on stable values, not the entire initialData object
 
   const handleSubmit = async (values: TransactionFormValues) => {
     if (!user?.id) {
@@ -125,6 +165,10 @@ export function TransactionDialog({
         throw new Error('Please select a valid category')
       }
 
+      const merchantId = values.merchant_id ? values.merchant_id : null
+
+      // IMPORTANT: Only include fields that exist in the transactions table schema
+      // merchant_name column does NOT exist in the schema - only merchant_id
       const payload = {
         user_id: user.id,
         name: values.name,
@@ -133,6 +177,8 @@ export function TransactionDialog({
         account_type: values.account_type,
         category_id: categoryId,
         category_name: selectedCategory.name,
+        merchant_id: merchantId,
+        // NOTE: merchant_name is intentionally omitted - it doesn't exist in the DB schema
         date: values.date,
         description: values.description || '',
         recurring_frequency: 'Never',
@@ -312,6 +358,33 @@ export function TransactionDialog({
             )}
           </div>
 
+          {/* Row 3b: Merchant (optional) */}
+          <div className="space-y-1.5">
+            <Label htmlFor="merchant" className="text-xs font-medium text-muted-foreground">
+              Merchant <span className="text-muted-foreground/60">(optional)</span>
+            </Label>
+            <Select 
+              value={form.watch('merchant_id') || 'none'} 
+              onValueChange={(v) => form.setValue('merchant_id', v === 'none' ? '' : v, { shouldDirty: true })}
+              disabled={merchantsLoading}
+            >
+              <SelectTrigger id="merchant" className="h-9 text-sm">
+                <SelectValue placeholder="Select merchant" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No merchant</SelectItem>
+                {merchants?.map(m => (
+                  <SelectItem key={m.id} value={m.id}>{m.display_name || m.merchant_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {merchants?.length === 0 && !merchantsLoading && (
+              <p className="text-xs text-muted-foreground">
+                No merchants yet. Create merchants from the Merchants page.
+              </p>
+            )}
+          </div>
+
           {/* Row 4: Description (optional) */}
           <div className="space-y-1.5">
             <Label htmlFor="description" className="text-xs font-medium text-muted-foreground">
@@ -338,7 +411,7 @@ export function TransactionDialog({
             <Button 
               type="submit"
               className={primaryButton}
-              disabled={isSubmitting || categoriesLoading}
+              disabled={isSubmitting || categoriesLoading || merchantsLoading}
             >
               {isSubmitting ? (
                 <>

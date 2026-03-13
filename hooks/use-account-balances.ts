@@ -59,11 +59,11 @@ export function useAccountBalances() {
             console.warn('[useAccountBalances] Using fallback calculation - run migration 009_update_balance_system.sql')
             setUsingFallback(true)
             
-            // Fallback: Calculate from balances directly without effective date logic
+            // Fallback: Calculate from balances directly (effective_date tracked in history)
             const fallbackSummary = (balancesData || []).map((balance: any) => ({
               account_type: balance.account_type,
               starting_balance: Number(balance.current_balance),
-              effective_date: balance.effective_date || new Date().toISOString().split('T')[0],
+              effective_date: new Date().toISOString().split('T')[0],
               income_after: 0,
               expenses_after: 0,
               current_balance: Number(balance.current_balance)
@@ -81,11 +81,11 @@ export function useAccountBalances() {
           console.warn('[useAccountBalances] RPC failed, using fallback:', rpcError)
           setUsingFallback(true)
           
-          // Fallback calculation
+          // Fallback calculation (effective_date tracked in history)
           const fallbackSummary = (balancesData || []).map((balance: any) => ({
             account_type: balance.account_type,
             starting_balance: Number(balance.current_balance),
-            effective_date: balance.effective_date || new Date().toISOString().split('T')[0],
+            effective_date: new Date().toISOString().split('T')[0],
             income_after: 0,
             expenses_after: 0,
             current_balance: Number(balance.current_balance)
@@ -123,44 +123,24 @@ export function useAccountBalances() {
   }, [])
 
   // Create or update balance
+  // Note: effective_date is tracked in account_balance_history only, not in account_balances
   const upsertBalance = useCallback(async (data: CreateBalanceData): Promise<void> => {
     if (!user?.id) throw new Error('User not authenticated')
 
     try {
-      const effectiveDate = data.effective_date || new Date().toISOString().split('T')[0]
-      
-      // Check if effective_date column exists by trying to use it
+      // Upsert to account_balances (does not include effective_date - that's in history)
       const { error } = await supabase
         .from('account_balances')
         .upsert({
           user_id: user.id,
           account_type: data.account_type,
           current_balance: data.current_balance,
-          effective_date: effectiveDate,
           last_updated: new Date().toISOString()
         }, {
           onConflict: 'user_id,account_type'
         })
 
-      if (error) {
-        // If effective_date doesn't exist, try without it
-        if (error.message?.includes('effective_date')) {
-          console.warn('[useAccountBalances] effective_date column not found, using legacy upsert')
-          const { error: legacyError } = await supabase
-            .from('account_balances')
-            .upsert({
-              user_id: user.id,
-              account_type: data.account_type,
-              current_balance: data.current_balance,
-              last_updated: new Date().toISOString()
-            }, {
-              onConflict: 'user_id,account_type'
-            })
-          if (legacyError) throw legacyError
-        } else {
-          throw error
-        }
-      }
+      if (error) throw error
 
       await refresh()
       toast.success(`${data.account_type} balance updated successfully`)
@@ -172,22 +152,17 @@ export function useAccountBalances() {
   }, [user?.id, supabase, refresh])
 
   // Update balance by ID
+  // Note: effective_date is tracked in account_balance_history only
   const updateBalance = useCallback(async (id: number, data: UpdateBalanceData): Promise<void> => {
     if (!user?.id) throw new Error('User not authenticated')
 
     try {
-      const updateData: any = {
-        current_balance: data.current_balance,
-        last_updated: new Date().toISOString()
-      }
-      
-      if (data.effective_date) {
-        updateData.effective_date = data.effective_date
-      }
-      
       const { error } = await supabase
         .from('account_balances')
-        .update(updateData)
+        .update({
+          current_balance: data.current_balance,
+          last_updated: new Date().toISOString()
+        })
         .eq('id', id)
         .eq('user_id', user.id)
 
@@ -264,7 +239,7 @@ export function useAccountBalances() {
     }
   }, [currentBalanceSummary])
 
-  // Get the latest effective date across all accounts
+  // Get the latest last_updated date across all accounts
   const latestEffectiveDate = useMemo(() => {
     if (balances.length === 0) return null
     // Parse dates as local time to avoid timezone issues
@@ -273,7 +248,7 @@ export function useAccountBalances() {
       return new Date(year, month - 1, day)
     }
     const dates = balances.map(b => {
-      const dateStr = b.effective_date || b.last_updated?.split('T')[0]
+      const dateStr = b.last_updated?.split('T')[0]
       if (!dateStr) return new Date(0)
       // If it's already YYYY-MM-DD format, parse as local
       if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {

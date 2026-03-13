@@ -186,6 +186,11 @@ class DebugLogger {
     if (url[0] === '/' && url[1] === '_') return false
     if (url.includes('/_next/')) return false
     
+    // Exclude Next.js RSC payload requests - these are internal framework requests
+    // that should not be intercepted as they can break App Router navigation
+    if (url.includes('?_rsc=')) return false
+    if (url.includes('_rsc=')) return false
+    
     // Exclude Next.js dev endpoints
     if (url.includes('/__nextjs_')) return false
     if (url.includes('/__nextjs_original-stack-frames')) return false
@@ -196,6 +201,18 @@ class DebugLogger {
     if (url.startsWith('chrome-extension://')) return false
     if (url.startsWith('moz-extension://')) return false
     if (url.startsWith('safari-extension://')) return false
+    
+    // Exclude analytics/third-party services (don't log noise from these)
+    if (url.includes('posthog.com')) return false
+    if (url.includes('us.i.posthog.com')) return false
+    if (url.includes('eu.i.posthog.com')) return false
+    if (url.includes('sentry.io')) return false
+    
+    // Exclude Clerk authentication endpoints - these are critical for auth
+    // and should not be intercepted to avoid breaking token refresh
+    if (url.includes('clerk.accounts.dev')) return false
+    if (url.includes('.clerk.')) return false
+    if (url.includes('/clerk/')) return false
     
     return true
   }
@@ -292,6 +309,42 @@ class DebugLogger {
         
         // Skip logging for intentional aborts (AbortError)
         if (error?.name === 'AbortError') {
+          throw error
+        }
+        
+        // Skip logging for analytics/third-party service failures (these are non-critical)
+        const errorMessage = error?.message || ''
+        const isAnalyticsError = 
+          errorMessage.includes('posthog') || 
+          errorMessage.includes('us.i.posthog') ||
+          errorMessage.includes('eu.i.posthog') ||
+          url.includes('posthog') ||
+          url.includes('us.i.posthog') ||
+          url.includes('eu.i.posthog') ||
+          // Also check for generic "Failed to fetch" that comes from analytics domains
+          (errorMessage.includes('Failed to fetch') && 
+           (url.includes('i.posthog.com') || url.includes('posthog')))
+        
+        if (isAnalyticsError) {
+          // Silently re-throw analytics errors without logging
+          throw error
+        }
+        
+        // Skip logging for Clerk auth errors - these are handled by Clerk SDK
+        const isClerkError = 
+          url.includes('clerk.accounts.dev') ||
+          url.includes('.clerk.') ||
+          errorMessage.includes('clerk') ||
+          errorMessage.includes('accounts.dev')
+        
+        if (isClerkError) {
+          // Silently re-throw Clerk errors without logging
+          throw error
+        }
+        
+        // Skip logging for RSC payload request failures - these are Next.js internal
+        const isRscError = url.includes('?_rsc=') || url.includes('_rsc=')
+        if (isRscError) {
           throw error
         }
         

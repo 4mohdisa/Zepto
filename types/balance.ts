@@ -7,7 +7,7 @@ export interface AccountBalance {
   user_id: string;
   account_type: AccountType;
   current_balance: number;
-  effective_date: string;  // Date from which this balance is valid
+  // effective_date is tracked in account_balance_history only, not in account_balances
   last_updated: string;
   created_at: string;
   updated_at: string;
@@ -33,10 +33,10 @@ export interface CurrentBalanceSummary {
 export interface CreateBalanceData {
   account_type: AccountType;
   current_balance: number;
-  effective_date?: string;  // Optional, defaults to today
+  // effective_date is tracked in account_balance_history only
 }
 
 export interface UpdateBalanceData {
   current_balance: number;
-  effective_date?: string;
+  // effective_date is tracked in account_balance_history only
 }

@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { categories } from '@/constants/categories'
+import { useCategories } from '@/hooks/use-categories'
 import { cn } from '@/lib/utils'
 
 interface BulkActionsBarProps {
@@ -38,6 +38,7 @@ export function BulkActionsBar({
   const [showCategoryDialog, setShowCategoryDialog] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const { categories, loading: categoriesLoading } = useCategories()
 
   if (selectedCount === 0) return null
 
@@ -152,11 +153,15 @@ export function BulkActionsBar({
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id.toString()}>
-                    {category.name}
-                  </SelectItem>
-                ))}
+                {categoriesLoading ? (
+                  <SelectItem value="loading" disabled>Loading categories...</SelectItem>
+                ) : (
+                  categories?.map((category) => (
+                    <SelectItem key={category.id} value={category.id.toString()}>
+                      {category.name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>

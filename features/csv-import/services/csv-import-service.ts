@@ -5,7 +5,6 @@
  */
 
 import OpenAI from 'openai';
-import { categories } from '@/constants/categories';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -35,6 +34,7 @@ export interface CategorizedTransaction extends CSVTransaction {
   suggestedCategory: string;
   suggestedType: 'Income' | 'Expense';
   confidence: number;
+  categoryId?: number; // Optional category ID from user's DB categories
 }
 
 // Common CSV column name mappings
@@ -435,11 +435,22 @@ function normalizeDate(dateStr: string): string {
 
 /**
  * Use AI to categorize transactions
+ * @param transactions - The transactions to categorize
+ * @param userCategories - The user's actual categories from the database (name + id)
  */
 export async function categorizeTransactionsWithAI(
-  transactions: CSVTransaction[]
+  transactions: CSVTransaction[],
+  userCategories?: { id: number; name: string }[]
 ): Promise<CategorizedTransaction[]> {
-  const categoryNames = categories.map(c => c.name);
+  // Use user's categories if provided, otherwise fallback to a default set
+  const categoryNames = userCategories?.map(c => c.name) || [
+    'Salary', 'Freelance', 'Investments', 'Other Income',
+    'Housing', 'Rent', 'Utilities', 'Bills',
+    'Food', 'Groceries', 'Restaurant', 'Coffee',
+    'Transport', 'Gas', 'Parking', 'Taxi',
+    'Entertainment', 'Shopping', 'Subscriptions', 'Health',
+    'Savings', 'Charity', 'Education', 'Miscellaneous'
+  ];
   
   // Process in batches to avoid overwhelming the API
   const BATCH_SIZE = 20;
@@ -493,11 +504,17 @@ Rules:
           confidence: 50,
         };
         
+        // Find the category ID if user categories were provided
+        const matchedCategory = userCategories?.find(c => 
+          c.name.toLowerCase().trim() === aiResult.category.toLowerCase().trim()
+        );
+        
         results.push({
           ...batch[j],
-          suggestedCategory: aiResult.category,
+          suggestedCategory: matchedCategory?.name || aiResult.category,
           suggestedType: aiResult.type,
           confidence: aiResult.confidence,
+          categoryId: matchedCategory?.id, // Include category ID if matched
         });
       }
     } catch (error: any) {
@@ -528,8 +545,13 @@ Rules:
 
 /**
  * Simple rule-based categorization fallback (no AI)
+ * @param transactions - The transactions to categorize
+ * @param userCategories - The user's actual categories from the database (optional)
  */
-export function categorizeWithRules(transactions: CSVTransaction[]): CategorizedTransaction[] {
+export function categorizeWithRules(
+  transactions: CSVTransaction[],
+  userCategories?: { id: number; name: string }[]
+): CategorizedTransaction[] {
   const keywordMap: Record<string, string[]> = {
     'Salary': ['salary', 'payroll', 'wage', 'employer', 'payrun'],
     'Food': ['restaurant', 'food', 'grocery', 'supermarket', 'cafe', 'coffee', 'lunch', 'dinner'],
@@ -625,11 +647,17 @@ export function categorizeWithRules(transactions: CSVTransaction[]): Categorized
     const incomeIndicators = ['payrun', 'salary', 'wage', 'deposit', 'transfer in', 'received'];
     const isIncome = incomeIndicators.some(ind => desc.includes(ind));
     
+    // Find the matching category ID if user categories were provided
+    const matchedCategory = userCategories?.find(c => 
+      c.name.toLowerCase().trim() === bestCategory.toLowerCase().trim()
+    );
+    
     return {
       ...transaction,
-      suggestedCategory: bestCategory,
+      suggestedCategory: matchedCategory?.name || bestCategory,
       suggestedType: isIncome ? 'Income' : (transaction.type || 'Expense'),
       confidence: maxMatches > 0 ? 70 : 40,
+      categoryId: matchedCategory?.id,
     };
   });
 }

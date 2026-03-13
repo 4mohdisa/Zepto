@@ -78,7 +78,8 @@ export function useRecurringTransactions(): UseRecurringTransactionsReturn {
 
       const processedData = (data || []).map((item: any) => ({
         ...item,
-        category_name: item.categories?.name || 'Uncategorized'
+        category_name: item.categories?.name || 'Uncategorized',
+        merchant_name: item.merchants?.merchant_name || null
       })) as RecurringTransaction[]
 
       setRecurringTransactions(processedData)

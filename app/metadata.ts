@@ -1,8 +1,8 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Zepto - Personal Finance Manager",
-  description: "Track and manage your personal finances with ease",
+  title: "Zepto - Dashboard",
+  description: "Manage your finances",
   icons: {
     icon: [
       { url: "/favicon/favicon-16x16.png", sizes: "16x16", type: "image/png" },

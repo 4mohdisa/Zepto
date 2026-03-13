@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -139,11 +140,16 @@ export function SubmissionDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden" aria-describedby="dialog-description">
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle className="text-lg font-semibold">
             {isIssue ? 'Report an Issue' : 'Request a Feature'}
           </DialogTitle>
+          <DialogDescription id="dialog-description" className="sr-only">
+            {isIssue 
+              ? 'Submit an issue report to help us improve Zepto. Please provide a clear title and description.' 
+              : 'Submit a feature request to help us improve Zepto. Please describe your idea in detail.'}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">

@@ -18,7 +18,11 @@ interface Transaction {
   type: 'Income' | 'Expense'
   account_type: string
   category_id: number | null
+  category_name?: string | null  // Denormalized category name from DB
   categories: { id: number; name: string } | null
+  merchant_id: string | null
+  merchant_name?: string | null  // Denormalized merchant name from DB
+  merchants: { id: string; merchant_name: string } | null
 }
 
 interface UseTransactionsState {

@@ -44,6 +44,7 @@ export const recurringTransactionSchema = z.object({
     invalid_type_error: "Invalid date format",
   }),
   end_date: z.date().optional(),
+  merchant_id: z.string().optional(),
 })
 
 export type TransactionFormValues = z.infer<typeof transactionSchema>

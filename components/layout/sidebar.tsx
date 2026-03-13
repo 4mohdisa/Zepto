@@ -21,6 +21,7 @@ import {
   Store,
   Tag,
   MessageSquare,
+  FileText,
 } from 'lucide-react'
 
 const navItems = [
@@ -48,6 +49,11 @@ const navItems = [
     title: "Categories", 
     url: "/categories", 
     icon: Tag,
+  },
+  { 
+    title: "Reports", 
+    url: "/reports", 
+    icon: FileText,
   },
   { 
     title: "Feedback", 

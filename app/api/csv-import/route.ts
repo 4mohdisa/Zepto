@@ -40,6 +40,24 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Fetch user's categories and merchants for ID lookup
+    const [{ data: categories }, { data: merchants }] = await Promise.all([
+      supabase.from('categories').select('id, name').eq('user_id', userId),
+      supabase.from('merchants').select('id, merchant_name, normalized_name').eq('user_id', userId)
+    ]);
+
+    // Build lookup maps
+    const categoryMap = new Map<string, number>();
+    for (const cat of (categories || [])) {
+      categoryMap.set(cat.name.toLowerCase(), cat.id);
+    }
+
+    const merchantMap = new Map<string, string>();
+    for (const m of (merchants || [])) {
+      merchantMap.set(m.merchant_name.toLowerCase(), m.id);
+      merchantMap.set(m.normalized_name.toLowerCase(), m.id);
+    }
+
     // Check for existing duplicates in database
     const hashes = transactions.map((t) => generateTransactionHashClient(t));
     
@@ -89,21 +107,59 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Prepare transactions with hashes
-    const transactionsToInsert = uniqueTransactions.map((t) => ({
-      user_id: userId,
-      name: t.name,
-      amount: t.amount,
-      type: t.type || 'Expense',
-      account_type: t.account_type || 'Checking',
-      category_name: t.category || 'Uncategorized',
-      date: t.date,
-      description: t.description || '',
-      transaction_hash: generateTransactionHashClient(t),
-      recurring_frequency: 'Never',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }));
+    // Track categories that couldn't be matched for debugging
+    const unmatchedCategories = new Set<string>();
+
+    // Prepare transactions with proper category_id and merchant_id lookup
+    const transactionsToInsert = uniqueTransactions.map((t) => {
+      const categoryName = t.category || 'Uncategorized';
+      
+      // Use provided categoryId from AI/rule-based categorization if available
+      // Otherwise fall back to name-based lookup with case-insensitive matching
+      let categoryId: number | null = t.categoryId || null;
+      
+      if (categoryId === null) {
+        // Case-insensitive exact match only (no fuzzy matching to avoid wrong assignments)
+        const normalizedName = categoryName.toLowerCase().trim();
+        categoryId = categoryMap.get(normalizedName) || null;
+        
+        // Log unmatched categories for debugging
+        if (categoryId === null && categoryName !== 'Uncategorized') {
+          unmatchedCategories.add(categoryName);
+        }
+      }
+      
+      // Try to find merchant by name or merchant_name field
+      const merchantName = t.merchant || t.merchant_name || t.name;
+      const merchantId = merchantMap.get(merchantName.toLowerCase().trim()) || null;
+
+      return {
+        user_id: userId,
+        name: t.name,
+        amount: t.amount,
+        type: t.type || 'Expense',
+        account_type: t.account_type || 'Checking',
+        category_id: categoryId,
+        category_name: categoryName,
+        merchant_id: merchantId,
+        date: t.date,
+        description: t.description || '',
+        transaction_hash: generateTransactionHashClient(t),
+        recurring_frequency: 'Never',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+    });
+    
+    // Log unmatched categories for debugging
+    if (unmatchedCategories.size > 0) {
+      const availableCategories = (categories || []).map(c => c.name);
+      console.warn('[CSV Import] Unmatched categories (will be null in DB):', {
+        unmatched: Array.from(unmatchedCategories),
+        availableCategories,
+        suggestion: 'These categories were not found in the user\'s DB. Please check for typos or create the categories first.',
+      });
+    }
 
     // Atomic insert
     const { data: inserted, error: insertError } = await supabase

@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { categories } from "@/constants/categories"
+import { useCategories } from "@/hooks/use-categories"
 
 interface BulkCategoryChangeDialogProps {
   isOpen: boolean
@@ -13,6 +13,7 @@ interface BulkCategoryChangeDialogProps {
 
 export function BulkCategoryChangeDialog({ isOpen, onClose, onSave, selectedCount }: BulkCategoryChangeDialogProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
+  const { categories, loading: categoriesLoading } = useCategories()
 
   const handleSave = () => {
     if (selectedCategory) {
@@ -35,15 +36,19 @@ export function BulkCategoryChangeDialog({ isOpen, onClose, onSave, selectedCoun
             <SelectValue placeholder="Select a category" />
           </SelectTrigger>
           <SelectContent className="bg-popover border-border shadow-xl">
-            {categories.map((category) => (
-              <SelectItem 
-                key={category.id} 
-                value={category.id.toString()}
-                className="hover:bg-hover-surface focus:bg-hover-surface"
-              >
-                {category.name}
-              </SelectItem>
-            ))}
+            {categoriesLoading ? (
+              <SelectItem value="loading" disabled>Loading categories...</SelectItem>
+            ) : (
+              categories?.map((category) => (
+                <SelectItem 
+                  key={category.id} 
+                  value={category.id.toString()}
+                  className="hover:bg-hover-surface focus:bg-hover-surface"
+                >
+                  {category.name}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
         <DialogFooter>

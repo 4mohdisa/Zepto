@@ -45,6 +45,7 @@ export function useRecurringTransactionSubmit({
         ...data,
         user_id: userId,
         category_id: data.category_id ? parseInt(data.category_id, 10) : 1,
+        merchant_id: data.merchant_id === 'none' ? null : data.merchant_id || null,
         start_date: formatDate(data.start_date) as string,
         end_date: formatDate(data.end_date),
         created_at: new Date().toISOString(),
@@ -62,6 +63,7 @@ export function useRecurringTransactionSubmit({
           type: data.type,
           frequency: data.frequency,
           has_category: !!data.category_id,
+          has_merchant: !!data.merchant_id && data.merchant_id !== 'none',
           has_end_date: !!data.end_date,
         })
       } else if (mode === 'edit' && initialDataId) {
@@ -75,6 +77,7 @@ export function useRecurringTransactionSubmit({
           recurring_id: initialDataId,
           type: data.type,
           frequency: data.frequency,
+          has_merchant: !!data.merchant_id && data.merchant_id !== 'none',
         })
       } else if (onSubmitCallback) {
         await onSubmitCallback(data)

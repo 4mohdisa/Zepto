@@ -13,6 +13,8 @@ export interface Transaction {
   account_type: string | null; // Matches DB schema
   category_id: number | null; // Foreign key, can be null
   category_name?: string | null; // Denormalized or from join
+  merchant_id?: string | null; // Foreign key to merchants
+  merchant_name?: string | null; // Denormalized or from join
   recurring_frequency?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -33,12 +35,19 @@ export interface RecurringTransaction {
   account_type: string;
   category_id: number;
   category_name?: string | null;
+  merchant_id?: string | null;
+  merchant_name?: string | null;
   frequency: string;
   start_date: Date | string;
   end_date?: Date | string | null;
   description?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  // Joined merchant data from Supabase query
+  merchants?: {
+    id: string;
+    merchant_name: string;
+  } | null;
 }
 
 export interface UpcomingTransaction {

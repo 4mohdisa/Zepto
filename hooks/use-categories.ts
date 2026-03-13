@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useSupabaseClient } from '@/lib/supabase/client';
 
 export interface Category {
   id: number;
@@ -16,33 +15,26 @@ export interface Category {
 /**
  * useCategories Hook
  * 
- * Fetches categories from Supabase with Clerk authentication.
+ * Fetches categories from the API.
  * Includes default categories (is_default = true) and user-specific categories.
  */
 export function useCategories() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const supabase = useSupabaseClient() // Use authenticated client
 
   useEffect(() => {
     async function fetchCategories() {
       try {
         setLoading(true)
 
-        // Fetch all categories (default categories + user-specific categories)
-        // RLS policies will handle filtering based on Clerk JWT token
-        const { data, error } = await supabase
-          .from('categories')
-          .select('*')
-          .order('name', { ascending: true })
-
-        if (error) {
-          console.error('Error fetching categories:', error)
-          throw error
+        // Fetch categories from API (uses service role, bypasses RLS issues)
+        const response = await fetch('/api/categories')
+        if (!response.ok) {
+          throw new Error(`Failed to fetch categories: ${response.statusText}`)
         }
-
-        setCategories(data || [])
+        const data = await response.json()
+        setCategories(data.categories || [])
       } catch (err) {
         console.error('Error fetching categories:', err)
         setError(err instanceof Error ? err : new Error('Failed to fetch categories'))
@@ -53,7 +45,7 @@ export function useCategories() {
     }
 
     fetchCategories()
-  }, [supabase])
+  }, [])
 
   return { categories, loading, error }
 }

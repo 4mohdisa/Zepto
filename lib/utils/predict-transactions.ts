@@ -64,6 +64,8 @@ export function predictUpcomingTransactions(
         account_type: rt.account_type,
         category_id: rt.category_id,
         category_name: rt.category_name || 'Uncategorized',
+        merchant_id: rt.merchant_id || null,
+        merchant_name: rt.merchant_name || rt.merchants?.merchant_name || null,
         recurring_transaction_id: rt.id,
         recurring_frequency: rt.frequency,
         predicted: true,

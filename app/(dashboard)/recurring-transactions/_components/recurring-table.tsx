@@ -42,6 +42,65 @@ function sortByStartDate(items: RecurringTransaction[]): RecurringTransaction[] 
   })
 }
 
+// Category badge component - consistent with transactions table
+function CategoryBadge({ name }: { name: string | null | undefined }) {
+  const displayName = name || 'Uncategorized'
+  
+  return (
+    <Badge 
+      variant="outline" 
+      className={cn(
+        "text-xs font-medium rounded-md px-2 py-1 max-w-full",
+        "bg-gray-50 text-gray-700 border-gray-200",
+        "hover:bg-gray-100 transition-colors"
+      )}
+      title={displayName}
+    >
+      <span className="truncate max-w-[90px] inline-block">{displayName}</span>
+    </Badge>
+  )
+}
+
+// Merchant badge component - consistent with transactions table
+function MerchantBadge({ name }: { name: string | null | undefined }) {
+  if (!name) {
+    return (
+      <span className="text-xs text-gray-400 italic">-</span>
+    )
+  }
+  
+  return (
+    <Badge 
+      variant="outline" 
+      className={cn(
+        "text-xs font-medium rounded-md px-2 py-1 max-w-full",
+        "bg-blue-50 text-blue-700 border-blue-200",
+        "hover:bg-blue-100 transition-colors"
+      )}
+      title={name}
+    >
+      <span className="truncate max-w-[90px] inline-block">{name}</span>
+    </Badge>
+  )
+}
+
+// Type badge component - consistent with transactions table
+function TypeBadge({ type }: { type: string }) {
+  return (
+    <Badge 
+      variant="secondary" 
+      className={cn(
+        "text-xs font-medium rounded-md px-2 py-1",
+        type === 'Income' 
+          ? "bg-green-100 text-green-700 border-green-200" 
+          : "bg-red-100 text-red-700 border-red-200"
+      )}
+    >
+      {type}
+    </Badge>
+  )
+}
+
 export function RecurringTable({
   data,
   loading,
@@ -118,11 +177,11 @@ export function RecurringTable({
             <TableHeader>
               <TableRow className="border-b border-gray-200 bg-gray-50">
                 <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4">Name</TableHead>
-                <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 text-right w-28">Amount</TableHead>
+                <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 text-right w-24">Amount</TableHead>
                 <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 w-20">Type</TableHead>
-                <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 w-32">Category</TableHead>
+                <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 w-28">Category</TableHead>
+                <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 w-28">Merchant</TableHead>
                 <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 w-28">Start Date</TableHead>
-                <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 w-28">End Date</TableHead>
                 <TableHead className="text-xs font-semibold text-gray-600 py-3 px-4 w-14"></TableHead>
               </TableRow>
             </TableHeader>
@@ -156,35 +215,20 @@ export function RecurringTable({
                     <TableCell className="py-4 px-4 text-sm font-medium text-gray-900 truncate">
                       {transaction.name}
                     </TableCell>
-                    <TableCell className="py-4 px-4 text-sm text-gray-900 text-right whitespace-nowrap">
+                    <TableCell className="py-4 px-4 text-sm text-gray-900 text-right whitespace-nowrap font-mono">
                       {formatCurrency(transaction.amount)}
                     </TableCell>
                     <TableCell className="py-4 px-4">
-                      <Badge 
-                        variant="secondary" 
-                        className={cn(
-                          "text-xs font-medium rounded-md px-2 py-1",
-                          transaction.type === 'Income' 
-                            ? "bg-green-50 text-green-700 border-green-200" 
-                            : "bg-red-50 text-red-700 border-red-200"
-                        )}
-                      >
-                        {transaction.type}
-                      </Badge>
+                      <TypeBadge type={transaction.type} />
                     </TableCell>
-                    <TableCell className="py-4 px-4 text-sm text-gray-600">
-                      <Badge 
-                        variant="outline" 
-                        className="text-xs font-medium rounded-md px-2 py-1 bg-gray-50 text-gray-700 border-gray-200"
-                      >
-                        {transaction.category_name || 'Uncategorized'}
-                      </Badge>
+                    <TableCell className="py-4 px-4">
+                      <CategoryBadge name={transaction.category_name} />
+                    </TableCell>
+                    <TableCell className="py-4 px-4">
+                      <MerchantBadge name={transaction.merchant_name || transaction.merchants?.merchant_name} />
                     </TableCell>
                     <TableCell className="py-4 px-4 text-sm text-gray-600 whitespace-nowrap">
                       {formatDate(transaction.start_date)}
-                    </TableCell>
-                    <TableCell className="py-4 px-4 text-sm text-gray-600 whitespace-nowrap">
-                      {transaction.end_date ? formatDate(transaction.end_date) : 'No end date'}
                     </TableCell>
                     <TableCell className="py-4 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>

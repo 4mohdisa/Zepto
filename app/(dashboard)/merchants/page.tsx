@@ -1,15 +1,24 @@
 'use client'
 
-import { useMerchants, Merchant } from '@/hooks/use-merchants'
+import { useState } from 'react'
+import { useMerchants, Merchant, invalidateMerchantsCache } from '@/hooks/use-merchants'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Store, ArrowUpDown, Calendar, Hash, AlertCircle, Database, Wrench, Server, Loader2 } from 'lucide-react'
+import { Search, Store, ArrowUpDown, Calendar, Hash, AlertCircle, Database, Wrench, Server, Loader2, Plus, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { pageContainer, pageContent, pageHeading, bodyText, gridCols2, primaryButton } from '@/lib/styles'
+import { pageContainer, pageContent, pageHeading, bodyText, gridCols2, primaryButton, secondaryButton } from '@/lib/styles'
 import { usePageView } from '@/hooks/use-page-view'
+import { MerchantDialog } from './_components/merchant-dialog'
+import { ConfirmationDialog } from '@/components/dialogs/confirmation-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 // Skeleton loader for merchants list
 function MerchantsSkeleton() {
@@ -126,6 +135,14 @@ export default function MerchantsPage() {
     cacheMetadata
   } = useMerchants()
   
+  // Dialog state
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
+  const [editingMerchant, setEditingMerchant] = useState<Merchant | null>(null)
+  const [deletingMerchant, setDeletingMerchant] = useState<Merchant | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  
   // Check if we're refreshing while having cached data
   const isRefreshing = cacheMetadata.isFetching && filteredMerchants.length > 0
   
@@ -135,6 +152,54 @@ export default function MerchantsPage() {
       toast.success('Merchants imported successfully')
     } catch (err: any) {
       toast.error(err.message || 'Import failed')
+    }
+  }
+
+  const handleCreateSuccess = () => {
+    invalidateMerchantsCache()
+    refetch()
+  }
+
+  const handleEditClick = (merchant: Merchant) => {
+    setEditingMerchant(merchant)
+    setIsEditOpen(true)
+  }
+
+  const handleEditSuccess = () => {
+    invalidateMerchantsCache()
+    refetch()
+    setEditingMerchant(null)
+  }
+
+  const handleDeleteClick = (merchant: Merchant) => {
+    setDeletingMerchant(merchant)
+    setIsDeleteOpen(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingMerchant) return
+    
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/merchants?id=${deletingMerchant.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        toast.error(data.error || 'Failed to delete merchant')
+        return
+      }
+
+      toast.success('Merchant deleted successfully')
+      invalidateMerchantsCache()
+      refetch()
+      setIsDeleteOpen(false)
+      setDeletingMerchant(null)
+    } catch (error) {
+      toast.error('Failed to delete merchant')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -315,6 +380,13 @@ export default function MerchantsPage() {
               Frequently used merchants from your transactions
             </p>
           </div>
+          <Button
+            onClick={() => setIsCreateOpen(true)}
+            className={primaryButton}
+          >
+            <Plus className="h-4 w-4 mr-1.5" />
+            Create merchant
+          </Button>
         </div>
 
         {/* Error State */}
@@ -470,7 +542,7 @@ export default function MerchantsPage() {
                     </div>
                   </div>
 
-                  {/* Rank / Count indicator */}
+                  {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {index < 3 && (
                       <div className={cn(
@@ -482,13 +554,67 @@ export default function MerchantsPage() {
                         {index + 1}
                       </div>
                     )}
-                    <ArrowUpDown className="h-4 w-4 text-gray-400" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditClick(merchant)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteClick(merchant)}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ))}
             </div>
           </div>
         )}
+
+        {/* Create Merchant Dialog */}
+        <MerchantDialog
+          isOpen={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
+          mode="create"
+          onSuccess={handleCreateSuccess}
+        />
+
+        {/* Edit Merchant Dialog */}
+        <MerchantDialog
+          isOpen={isEditOpen}
+          onClose={() => {
+            setIsEditOpen(false)
+            setEditingMerchant(null)
+          }}
+          mode="edit"
+          initialName={editingMerchant?.merchant_name || ''}
+          merchantId={editingMerchant?.id}
+          onSuccess={handleEditSuccess}
+        />
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmationDialog
+          isOpen={isDeleteOpen}
+          onClose={() => {
+            setIsDeleteOpen(false)
+            setDeletingMerchant(null)
+          }}
+          onConfirm={handleDeleteConfirm}
+          title="Delete Merchant"
+          description={`Are you sure you want to delete "${deletingMerchant?.merchant_name || ''}"? This action cannot be undone.`}
+          confirmText={isDeleting ? 'Deleting...' : 'Delete'}
+          cancelText="Cancel"
+        />
       </div>
     </div>
   )

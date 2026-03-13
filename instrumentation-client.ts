@@ -70,8 +70,8 @@ Sentry.init({
     },
   },
   
-  // Debug mode in development
-  debug: process.env.NODE_ENV === 'development',
+  // Debug mode only when explicitly enabled via env var (too noisy otherwise)
+  debug: process.env.NEXT_PUBLIC_SENTRY_DEBUG === 'true',
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
