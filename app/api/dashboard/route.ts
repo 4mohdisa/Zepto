@@ -111,8 +111,9 @@ export async function GET(request: NextRequest) {
       } else if (type === 'Expense') {
         expenses += amount
         
-        // Build category distribution
-        const categoryName = t.categories?.name || t.category_name || 'Uncategorized'
+        // Build category distribution - prefer joined categories table over denormalized field
+        // This ensures phantom category names don't appear in the chart
+        const categoryName = t.categories?.name || (t.category_id ? null : t.category_name) || 'Uncategorized'
         const current = categoryMap.get(categoryName) || 0
         categoryMap.set(categoryName, current + amount)
       }

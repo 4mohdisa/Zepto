@@ -40,11 +40,15 @@ export async function POST(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch user's categories and merchants for ID lookup
-    const [{ data: categories }, { data: merchants }] = await Promise.all([
+    // Fetch user's categories AND default categories (user_id is null) for ID lookup
+    const [{ data: userCategories }, { data: defaultCategories }, { data: merchants }] = await Promise.all([
       supabase.from('categories').select('id, name').eq('user_id', userId),
+      supabase.from('categories').select('id, name').is('user_id', null),
       supabase.from('merchants').select('id, merchant_name, normalized_name').eq('user_id', userId)
     ]);
+    
+    // Merge user and default categories (user categories take precedence)
+    const categories = [...(defaultCategories || []), ...(userCategories || [])];
 
     // Build lookup maps
     const categoryMap = new Map<string, number>();
@@ -109,10 +113,35 @@ export async function POST(request: NextRequest) {
 
     // Track categories that couldn't be matched for debugging
     const unmatchedCategories = new Set<string>();
+    
+    // Category name remapping: phantom names → real DB category names
+    const categoryNameMap: Record<string, string> = {
+      'restaurant': 'Food & Dining',
+      'food': 'Food & Dining',
+      'groceries': 'Food & Dining',
+      'coffee': 'Food & Dining',
+      'mezza': 'Food & Dining',
+      'miscellaneous': 'Other Expense',
+      'misc': 'Other Expense',
+      'loan': 'Other Expense',
+      'bank cost': 'Other Expense',
+      'bank fees': 'Other Expense',
+      'transport': 'Transportation',
+      'utilities': 'Housing',
+      'health': 'Healthcare',
+      'subscription': 'Subscriptions',
+      'subscriptions': 'Subscriptions',
+    };
 
     // Prepare transactions with proper category_id and merchant_id lookup
     const transactionsToInsert = uniqueTransactions.map((t) => {
-      const categoryName = t.category || 'Uncategorized';
+      let categoryName = t.category || 'Uncategorized';
+      
+      // Remap phantom category names to real DB category names
+      const normalizedInputName = categoryName.toLowerCase().trim();
+      if (categoryNameMap[normalizedInputName]) {
+        categoryName = categoryNameMap[normalizedInputName];
+      }
       
       // Use provided categoryId from AI/rule-based categorization if available
       // Otherwise fall back to name-based lookup with case-insensitive matching
@@ -133,6 +162,11 @@ export async function POST(request: NextRequest) {
       const merchantName = t.merchant || t.merchant_name || t.name;
       const merchantId = merchantMap.get(merchantName.toLowerCase().trim()) || null;
 
+      // Final category name: use matched DB category name if found, otherwise remapped name
+      const finalCategoryName = categoryId 
+        ? (categories.find(c => c.id === categoryId)?.name || categoryName)
+        : categoryName;
+
       return {
         user_id: userId,
         name: t.name,
@@ -140,7 +174,7 @@ export async function POST(request: NextRequest) {
         type: t.type || 'Expense',
         account_type: t.account_type || 'Checking',
         category_id: categoryId,
-        category_name: categoryName,
+        category_name: finalCategoryName,
         merchant_id: merchantId,
         date: t.date,
         description: t.description || '',

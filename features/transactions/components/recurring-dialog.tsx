@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react'
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useForm, Controller } from "react-hook-form"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -27,6 +27,7 @@ import { RecurringTransaction } from '@/types/transaction'
 import { primaryButton, secondaryButton } from '@/lib/styles'
 
 import { InputField, TextareaField, SelectField, DatePickerField } from '@/components/shared/form-fields'
+import { CategoryCombobox } from '@/components/ui/category-combobox'
 import { LoadingButton } from '@/components/shared/loading-button'
 import { FormErrorSummary } from '@/components/shared/form-error-summary'
 import { useRecurringTransactionSubmit } from './hooks/use-recurring-transaction-submit'
@@ -263,12 +264,21 @@ export function RecurringTransactionDialog({
                 placeholder="Select type"
                 options={typeOptions}
               />
-              <SelectField
-                control={form.control}
+              <Controller
                 name="category_id"
-                label="Category"
-                placeholder="Select category"
-                options={categoryOptions}
+                control={form.control}
+                render={({ field }) => (
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Category</label>
+                    <CategoryCombobox
+                      options={categories || []}
+                      value={field.value || ''}
+                      onChange={(v) => field.onChange(v)}
+                      placeholder="Select category"
+                      disabled={loading}
+                    />
+                  </div>
+                )}
               />
             </div>
 

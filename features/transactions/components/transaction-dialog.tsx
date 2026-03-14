@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { invalidateMerchantsCache } from '@/hooks/use-merchants'
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
+import { useForm, Controller } from "react-hook-form"
 import { toast } from 'sonner'
 import { z } from 'zod'
 
@@ -25,6 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { CategoryCombobox } from "@/components/ui/category-combobox"
+import { DatePicker } from "@/components/ui/date-picker"
 import { transactionTypes } from "@/constants/transactiontypes"
 import { useCategories } from "@/hooks/use-categories"
 import { useMerchants } from "@/hooks/use-merchants"
@@ -290,10 +292,11 @@ export function TransactionDialog({
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="date" className="text-xs font-medium">Date</Label>
-              <Input
+              <DatePicker
                 id="date"
-                type="date"
-                {...form.register('date')}
+                value={form.watch('date')}
+                onChange={(v) => form.setValue('date', v, { shouldDirty: true, shouldValidate: true })}
+                placeholder="Select date"
                 className="h-9 text-sm"
               />
               {errors.date && (
@@ -339,20 +342,13 @@ export function TransactionDialog({
           {/* Row 3: Category */}
           <div className="space-y-1.5">
             <Label htmlFor="category" className="text-xs font-medium">Category</Label>
-            <Select 
-              value={form.watch('category_id')} 
-              onValueChange={(v) => form.setValue('category_id', v)}
+            <CategoryCombobox
+              options={categories || []}
+              value={form.watch('category_id')}
+              onChange={(v) => form.setValue('category_id', v, { shouldDirty: true, shouldValidate: true })}
+              placeholder="Select category"
               disabled={categoriesLoading}
-            >
-              <SelectTrigger id="category" className="h-9 text-sm">
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories?.map(c => (
-                  <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
             {errors.category_id && (
               <p className="text-xs text-red-500">{errors.category_id.message}</p>
             )}
@@ -363,21 +359,27 @@ export function TransactionDialog({
             <Label htmlFor="merchant" className="text-xs font-medium text-muted-foreground">
               Merchant <span className="text-muted-foreground/60">(optional)</span>
             </Label>
-            <Select 
-              value={form.watch('merchant_id') || 'none'} 
-              onValueChange={(v) => form.setValue('merchant_id', v === 'none' ? '' : v, { shouldDirty: true })}
-              disabled={merchantsLoading}
-            >
-              <SelectTrigger id="merchant" className="h-9 text-sm">
-                <SelectValue placeholder="Select merchant" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No merchant</SelectItem>
-                {merchants?.map(m => (
-                  <SelectItem key={m.id} value={m.id}>{m.display_name || m.merchant_name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Controller
+              name="merchant_id"
+              control={form.control}
+              render={({ field }) => (
+                <Select 
+                  value={field.value || 'none'} 
+                  onValueChange={(v) => field.onChange(v === 'none' ? '' : v)}
+                  disabled={merchantsLoading}
+                >
+                  <SelectTrigger id="merchant" className="h-9 text-sm">
+                    <SelectValue placeholder="Select merchant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No merchant</SelectItem>
+                    {merchants?.map(m => (
+                      <SelectItem key={m.id} value={m.id}>{m.display_name || m.merchant_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             {merchants?.length === 0 && !merchantsLoading && (
               <p className="text-xs text-muted-foreground">
                 No merchants yet. Create merchants from the Merchants page.

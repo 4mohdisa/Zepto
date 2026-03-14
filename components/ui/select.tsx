@@ -79,6 +79,8 @@ const SelectContent = React.forwardRef<
           "relative z-50 max-h-96 min-h-[2rem] min-w-[8rem] overflow-hidden rounded-md border bg-white text-popover-foreground shadow-md",
           // Hide content when closed to prevent flash at 0,0 before position calculation
           "data-[state=closed]:hidden",
+          // Hint browser to composite separately, reducing pre-position paint chance
+          "will-change-transform",
           // Animation classes only apply when state is open
           "data-[state=open]:animate-in data-[state=closed]:animate-out",
           "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",

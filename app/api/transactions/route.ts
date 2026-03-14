@@ -23,12 +23,13 @@ export async function GET(request: NextRequest) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Build query - join with categories only (merchant_id FK may not exist)
+    // Build query - join with categories and merchants
     let query = supabase
       .from('transactions')
       .select(`
         *,
-        categories (id, name)
+        categories (id, name),
+        merchants (id, merchant_name)
       `)
       .eq('user_id', userId)
 
@@ -100,34 +101,8 @@ export async function GET(request: NextRequest) {
       nextCursor = `${lastRow.date}_${lastRow.id}`
     }
 
-    // Fetch merchants separately for lookup by name (since merchant_id FK may not be reliable)
-    const { data: merchantsData } = await supabase
-      .from('merchants')
-      .select('id, merchant_name, normalized_name')
-      .eq('user_id', userId)
-
-    // Create merchant lookup map
-    const merchantLookup = new Map<string, { id: string; merchant_name: string }>()
-    for (const m of (merchantsData || [])) {
-      merchantLookup.set(m.merchant_name.toLowerCase(), { id: m.id, merchant_name: m.merchant_name })
-      merchantLookup.set(m.normalized_name.toLowerCase(), { id: m.id, merchant_name: m.merchant_name })
-    }
-
-    // Enhance rows with merchant data based on name matching
-    const enhancedRows = (dataRows || []).map((row: any) => {
-      // Try to find merchant by transaction name
-      const nameKey = row.name?.toLowerCase()
-      const merchant = nameKey ? merchantLookup.get(nameKey) : null
-
-      return {
-        ...row,
-        // Ensure merchants object exists for table display
-        merchants: row.merchant_id && merchant ? merchant : merchant || null,
-      }
-    })
-
     return NextResponse.json({
-      rows: enhancedRows,
+      rows: dataRows,
       nextCursor,
       hasNextPage,
     })

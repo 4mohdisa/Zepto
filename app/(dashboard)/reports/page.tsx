@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Plus, Calendar, Trash2, Eye, TrendingUp, AlertCircle, Loader2 } from 'lucide-react'
+import { DatePicker } from '@/components/ui/date-picker'
 import { format, parseISO, startOfMonth, endOfMonth, subMonths, isValid } from 'date-fns'
 import { toast } from 'sonner'
 import { pageContainer, pageContent, primaryButton, secondaryButton } from '@/lib/styles'
@@ -256,20 +257,20 @@ export default function ReportsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="dateFrom">From</Label>
-                  <Input
+                  <DatePicker
                     id="dateFrom"
-                    type="date"
                     value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
+                    onChange={setDateFrom}
+                    placeholder="Start date"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="dateTo">To</Label>
-                  <Input
+                  <DatePicker
                     id="dateTo"
-                    type="date"
                     value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
+                    onChange={setDateTo}
+                    placeholder="End date"
                   />
                 </div>
               </div>

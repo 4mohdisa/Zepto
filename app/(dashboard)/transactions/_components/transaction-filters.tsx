@@ -8,6 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { CategoryCombobox } from '@/components/ui/category-combobox'
+import { DateRangePicker } from '@/components/ui/date-picker'
 import { Search } from 'lucide-react'
 import { useCategories } from '@/hooks/use-categories'
 import { cn } from '@/lib/utils'
@@ -64,60 +66,27 @@ export function TransactionFilters({
           />
         </div>
         
-        <Select
+        <CategoryCombobox
+          options={categories}
           value={categoryId}
-          onValueChange={onCategoryIdChange}
-        >
-          <SelectTrigger 
-            className={cn(
-              "w-full sm:w-[200px] h-9 sm:h-10",
-              selectTriggerStyles
-            )}
-          >
-            <SelectValue placeholder="All Categories" />
-          </SelectTrigger>
-          <SelectContent className="bg-white">
-            <SelectItem value="all">All Categories</SelectItem>
-            {categoriesLoading ? (
-              <SelectItem value="loading" disabled>Loading categories...</SelectItem>
-            ) : (
-              categories.map((category) => (
-                <SelectItem key={category.id} value={category.id.toString()}>
-                  {category.name}
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
+          onChange={onCategoryIdChange}
+          placeholder="All Categories"
+          disabled={categoriesLoading}
+          showAllOption={true}
+          allOptionLabel="All Categories"
+        />
       </div>
 
       {/* Bottom row: Date range and Type sort */}
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-start sm:items-center">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:flex-none">
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => onDateFromChange(e.target.value)}
-              className={cn(
-                "w-full sm:w-[150px] h-9 sm:h-10 text-sm",
-                inputBaseStyles
-              )}
-            />
-          </div>
-          <span className="text-gray-400 text-sm">to</span>
-          <div className="relative flex-1 sm:flex-none">
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => onDateToChange(e.target.value)}
-              className={cn(
-                "w-full sm:w-[150px] h-9 sm:h-10 text-sm",
-                inputBaseStyles
-              )}
-            />
-          </div>
-        </div>
+        <DateRangePicker
+          from={dateFrom}
+          to={dateTo}
+          onFromChange={onDateFromChange}
+          onToChange={onDateToChange}
+          fromPlaceholder="Start date"
+          toPlaceholder="End date"
+        />
 
         {isDateRangeInvalid && (
           <span className="text-xs sm:text-sm text-red-500">
